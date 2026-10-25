@@ -1,0 +1,367 @@
+/* ==========================================================================
+   Manav Rachna Institutional Competency Framework - Design System
+   ========================================================================== */
+
+:root {
+  /* Brand Colors */
+  --color-primary: #8B1528;
+  --color-primary-dark: #6C0E1E;
+  --color-primary-light: #B22234;
+  --color-primary-subtle: #FDF2F4;
+  --color-primary-border: #F7D0D7;
+
+  /* Accent & Gold */
+  --color-accent-gold: #D97706;
+  --color-gold-light: #FEF3C7;
+  --color-gold-dark: #92400E;
+  --color-emerald: #10B981;
+  --color-emerald-dark: #047857;
+  --color-emerald-light: #D1FAE5;
+  --color-blue: #2563EB;
+  --color-blue-light: #EFF6FF;
+  --color-orange: #EA580C;
+  --color-orange-light: #FFF7ED;
+
+  /* Neutral Surface Colors */
+  --bg-page: #F8F6F2;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-subtle: #F1EFEA;
+  --border-color: #E6E1D8;
+  --border-light: #EFECE6;
+
+  /* Text Colors */
+  --text-main: #1C1917;
+  --text-muted: #57534E;
+  --text-subtle: #857F77;
+  --text-inverse: #FFFFFF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 16px -2px rgba(44, 24, 16, 0.06), 0 2px 6px -1px rgba(44, 24, 16, 0.04);
+  --shadow-lg: 0 10px 30px -5px rgba(44, 24, 16, 0.08), 0 4px 12px -2px rgba(44, 24, 16, 0.04);
+  --shadow-xl: 0 20px 40px -10px rgba(44, 24, 16, 0.12), 0 8px 16px -4px rgba(44, 24, 16, 0.06);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-display: 'Cinzel', serif;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes streakPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 21, 40, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(139, 21, 40, 0); }
+}
+
+@keyframes barFill {
+  from { width: 0%; }
+  to { width: var(--bar-width, 0%); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop {
+  animation: pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-bar-fill {
+  animation: barFill 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0ece6 25%, #e8e4dd 50%, #f0ece6 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+
+/* Utility Containers */
+.container {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+::-webkit-scrollbar-thumb {
+  background: #D6D1C7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B0A2;
+}
+
+/* Modern Card Style */
+.mr-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.mr-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Primary Button */
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  padding: 10px 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(139, 21, 40, 0.25);
+  font-size: 0.938rem;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  box-shadow: 0 6px 16px rgba(139, 21, 40, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: #FFFFFF;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  padding: 10px 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.938rem;
+}
+
+.btn-secondary:hover {
+  background: #F8F6F2;
+  border-color: #D6D1C7;
+  color: var(--color-primary);
+}
+
+/* Print Certificate Specifics */
+@media print {
+  body {
+    background: #FFFFFF !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   Universal UI Lock & I-Beam Cursor Prevention:
+   Globally locks the entire application so the text-editing I-beam cursor and
+   blinking typing caret NEVER appear on any text, headings, cards, or containers.
+   The clean default mouse pointer is enforced everywhere.
+   ========================================================================== */
+
+*,
+*::before,
+*::after,
+html,
+body,
+div,
+span,
+p,
+h1, h2, h3, h4, h5, h6,
+section,
+article,
+header,
+footer,
+nav,
+aside,
+main,
+ul, ol, li,
+table, thead, tbody, tr, th, td,
+label,
+svg {
+  cursor: default !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  caret-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* Clickable elements preserve interactive pointer */
+button,
+a,
+[role="button"],
+select,
+option,
+input[type="button"],
+input[type="submit"],
+input[type="checkbox"],
+input[type="radio"],
+.clickable {
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
+}
+
+/* ONLY legitimate text input controls can have the text editing I-beam cursor and caret */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+[contenteditable="true"] {
+  cursor: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  caret-color: auto !important;
+}
+
+/* ==========================================================================
+   Mobile & Multi-OS Responsive Layout Adaptations (iOS, Android, Tablet, Desktop)
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .certificate-layout,
+  .assessment-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .desktop-nav {
+    display: none !important;
+  }
+  body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .print-area {
+    padding: 24px 16px !important;
+  }
+  .container {
+    padding: 0 12px;
+  }
+}
+
+
+

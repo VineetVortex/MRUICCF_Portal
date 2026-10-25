@@ -1,0 +1,264 @@
+/**
+ * MRU SkillCert - Production In-Memory Authentication Client
+ * 
+ * Security Guardrails:
+ * 1. ZERO localStorage token storage: Access tokens reside strictly in-memory.
+ * 2. 30-Second Access Token Lifecycle: Proactively refreshed at ~22 seconds via HttpOnly cookie.
+ * 3. Automatic 401 Interceptor: Replays requests seamlessly if token expires in-flight.
+ * 4. Concurrent Refresh Lock: Prevents duplicate refresh requests from racing.
+ */
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+let _inMemoryAccessToken = null;
+let _currentUser = null;
+let _refreshTimeoutId = null;
+let _refreshPromise = null;
+const _authListeners = new Set();
+
+export function subscribeAuth(listener) {
+  _authListeners.add(listener);
+  return () => _authListeners.delete(listener);
+}
+
+function notifyListeners(event, data) {
+  _authListeners.forEach((fn) => {
+    try {
+      fn(event, data);
+    } catch (err) {
+      console.warn('[AuthClient] Listener error:', err);
+    }
+  });
+}
+
+/**
+ * Returns the current active 30-second access JWT from memory
+ */
+export function getInMemoryAccessToken() {
+  return _inMemoryAccessToken;
+}
+
+/**
+ * Returns the currently authenticated user profile
+ */
+export function getAuthenticatedUser() {
+  return _currentUser;
+}
+
+/**
+ * Sets the active in-memory access token and schedules proactive renewal
+ */
+export function setAuthSession(accessToken, user) {
+  _inMemoryAccessToken = accessToken;
+  if (user) {
+    _currentUser = user;
+  }
+
+  // Clear any existing proactive refresh timer
+  if (_refreshTimeoutId) {
+    clearTimeout(_refreshTimeoutId);
+    _refreshTimeoutId = null;
+  }
+
+  // Schedule renewal at 22 seconds (giving 8 seconds buffer before the strict 30s expiry)
+  if (accessToken) {
+    _refreshTimeoutId = setTimeout(() => {
+      silentRefresh().catch((err) => {
+        console.warn('[AuthClient] Proactive renewal warning:', err.message);
+      });
+    }, 22 * 1000);
+  }
+
+  notifyListeners('session_updated', { user: _currentUser, hasToken: Boolean(accessToken) });
+}
+
+/**
+ * Clears in-memory credentials and cancels pending refresh timers
+ */
+export function clearAuthSession() {
+  _inMemoryAccessToken = null;
+  _currentUser = null;
+  if (_refreshTimeoutId) {
+    clearTimeout(_refreshTimeoutId);
+    _refreshTimeoutId = null;
+  }
+  notifyListeners('session_cleared', null);
+}
+
+/**
+ * Rotates the refresh session and retrieves a new 30-second access token.
+ * Uses a single in-flight promise lock to prevent concurrent refresh storms.
+ */
+export async function silentRefresh() {
+  if (_refreshPromise) {
+    return _refreshPromise;
+  }
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Sends HttpOnly refresh cookie
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Refresh failed with status ${res.status}`);
+      }
+
+      const result = await res.json();
+      if (result.success && result.data?.accessToken) {
+        setAuthSession(result.data.accessToken, result.data.user);
+        return { success: true, user: result.data.user };
+      }
+
+      throw new Error(result.error || 'Failed to obtain refreshed access token');
+    } catch (err) {
+      clearAuthSession();
+      notifyListeners('session_expired', { reason: err.message });
+      throw err;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+/**
+ * Enterprise Authenticated HTTP Client:
+ * - Attaches Bearer in-memory access token
+ * - Handles 401 retry with automatic silent refresh
+ * - Preserves credentials: 'include' for CORS cookies
+ */
+export async function authFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set('Content-Type', headers.get('Content-Type') || 'application/json');
+
+  let token = getInMemoryAccessToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const fetchOptions = {
+    ...options,
+    headers,
+    credentials: 'include',
+  };
+
+  let response = await fetch(url, fetchOptions);
+
+  // If 401 Unauthorized, token may have passed the 30-second boundary; try silent refresh once
+  if (response.status === 401) {
+    try {
+      await silentRefresh();
+      const newToken = getInMemoryAccessToken();
+      if (newToken) {
+        headers.set('Authorization', `Bearer ${newToken}`);
+        response = await fetch(url, { ...fetchOptions, headers });
+      }
+    } catch (refreshErr) {
+      // Refresh failed, return original 401
+      return response;
+    }
+  }
+
+  return response;
+}
+
+/**
+ * Authenticates user credentials against the backend API
+ */
+export async function apiLoginUser({ email, password, isGoogleSso, name }) {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password, isGoogleSso, name }),
+  });
+
+  const data = await res.json();
+  if (res.ok && data.success) {
+    if (data.requireOtp) {
+      return { requireOtp: true, email: data.email, devOtp: data.devOtp, message: data.message };
+    }
+    if (data.data?.accessToken) {
+      setAuthSession(data.data.accessToken, data.data.user);
+    }
+  }
+
+  return data;
+}
+
+/**
+ * Verifies student 2FA OTP code
+ */
+export async function apiVerifyOtp({ email, otp }) {
+  const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, otp }),
+  });
+
+  const data = await res.json();
+  if (res.ok && data.success && data.data?.accessToken) {
+    setAuthSession(data.data.accessToken, data.data.user);
+  }
+
+  return data;
+}
+
+/**
+ * Revokes current refresh session and logs user out
+ */
+export async function apiLogoutUser() {
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+  } catch (err) {
+    console.warn('[AuthClient] Logout request notice:', err);
+  } finally {
+    clearAuthSession();
+  }
+}
+
+/**
+ * Self-service password recovery initiation
+ */
+export async function apiForgotPassword(email) {
+  const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return await res.json();
+}
+
+/**
+ * Completes password reset with verified token
+ */
+export async function apiResetPassword({ token, newPassword }) {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+  return await res.json();
+}
+
+/**
+ * Initializes authentication state upon initial application load
+ */
+export async function initAuthSession() {
+  try {
+    const result = await silentRefresh();
+    return result.user || null;
+  } catch (err) {
+    return null;
+  }
+}

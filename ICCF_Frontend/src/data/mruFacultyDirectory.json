@@ -1,0 +1,1810 @@
+[
+  {
+    "name": "Dr. Dipali Bansal",
+    "email": "deanengg@mru.edu.in",
+    "designation": "Dean Engineering & Professor",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Vivek Sharma",
+    "email": "viveksharma@mru.edu.in",
+    "designation": "HoD",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sachin Lakra",
+    "email": "sachin@mru.edu.in",
+    "designation": "Professor, Assoc. Dean Acad. (Engg. & Mgmt.)",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Manpreet Kaur",
+    "email": "manpreet@mru.edu.in",
+    "designation": "Director E Learning & Professor",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Chandni Magoo",
+    "email": "chandnimagoo@mru.edu.in",
+    "designation": "Assoc. Prof. & Assoc. HoD",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Jyoti Pruthi",
+    "email": "jyoti@mru.edu.in",
+    "designation": "Professor, Admission Chairperson",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Parneeta Dhaliwal",
+    "email": "parneeta.cst@mru.edu.in",
+    "designation": "Professor, Director-IIC",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Prinima Gupta",
+    "email": "prinima@mru.edu.in",
+    "designation": "Prof., Director – Ph.D Prog.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Mrinal Pandey",
+    "email": "mrinalpandey@mru.edu.in",
+    "designation": "Professor",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Abhishek Saxena",
+    "email": "abhisheksaxena@mru.edu.in",
+    "designation": "Professor",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Punam Rattan",
+    "email": "punamrattan@mru.edu.in",
+    "designation": "Professor",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Deepti Thakral",
+    "email": "deeptithakral@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. K. Deepa",
+    "email": "kdeepa@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Mamta Arora",
+    "email": "mamta@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Manoj Kumar",
+    "email": "manoj@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Meena Chaudhary",
+    "email": "meena@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Narender",
+    "email": "narender@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Neelu Chaudhary",
+    "email": "neelu@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Nitika",
+    "email": "nitika@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ranjna Jain",
+    "email": "ranjnajain@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sanjay Singh",
+    "email": "sanjaysingh@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Urmila",
+    "email": "urmila@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ganga Sharma",
+    "email": "gangasharma@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Gunjan Chandwani",
+    "email": "gunjan@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sujata",
+    "email": "sujata@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Simple Sharma",
+    "email": "simplesharma@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Agha Imran Hussain",
+    "email": "agha@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Ankur Kr. Aggarwal",
+    "email": "ankur@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Anup Singh Kushwaha",
+    "email": "anup@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Anu Priya Sharma",
+    "email": "anupriya@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Deepanshi Gupta",
+    "email": "deepanshi@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Esha Khanna",
+    "email": "eshakhanna@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Jyoti Nanwal",
+    "email": "jyotinanwal@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Ram Chatterjee",
+    "email": "ram@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shalu",
+    "email": "shalu@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Tamanna Sachdeva",
+    "email": "tamannasachdeva@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Pooja Sachdeva",
+    "email": "poojaahuja.cst@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Ashima Garg",
+    "email": "ashimagarg.cst@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Awwab Mohammad",
+    "email": "awwabmohammad@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Babita Yadav",
+    "email": "babitayadav@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Aniket Singh",
+    "email": "aniketsingh@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Pushpa",
+    "email": "pushpa@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Monika Lamba",
+    "email": "monikalamba@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Bhawana Srivastava",
+    "email": "bhawanasrivastava@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Mahesh Swami",
+    "email": "maheshswami@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Shreya Biswas",
+    "email": "shreyabiswas@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Computer Science & Technology",
+    "dept_code": "CST",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Bhim Singh",
+    "email": "bhimsingh@mru.edu.in",
+    "designation": "Director Publications & Patents & HOD",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ajit",
+    "email": "ajit@mru.edu.in",
+    "designation": "Professor, Assoc. Dean – DSW",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Joginder Singh",
+    "email": "joginder@mru.edu.in",
+    "designation": "Professor",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Prashant Bhardwaj",
+    "email": "prashant@mru.edu.in",
+    "designation": "Assoc. Prof. Dy. Director-IQAC",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Gianender Kajal",
+    "email": "gianender@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Mandeep Bhadana",
+    "email": "mandeep@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Nazish Ahmad Shamsi",
+    "email": "nazish@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Piyush Mahendru",
+    "email": "piyush@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Pradeep Kr. Mouria",
+    "email": "pradeep@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Smriti Mishra",
+    "email": "smritimishra@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Zeba Naaz",
+    "email": "zebanaaz@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Jimmy Mehta",
+    "email": "jimmymehta@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Mechanical Engineering",
+    "dept_code": "ME",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shruti Vashist",
+    "email": "deanacademics@mru.edu.in",
+    "designation": "Professor, Dean-Academics Dean Research & Consultancy HoD-ECE",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Meenakshi Gupta",
+    "email": "meenakshigupta@mru.edu.in",
+    "designation": "Assoc. Prof.-Assoc. HoD",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Charu Pathak",
+    "email": "charu@mru.edu.in",
+    "designation": "Professor",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Kavita Singh",
+    "email": "kavitasingh@mru.edu.in",
+    "designation": "Professor",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Niharika Thakur",
+    "email": "niharika@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Richa Adlakha",
+    "email": "richaadlakha@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Bhanu Pratap Chaudhary",
+    "email": "bhanu@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Lokesh Bhardwaj",
+    "email": "lokesh@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Mohit Kumar Singh",
+    "email": "mohitkumarsingh@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Nitu Chauhan",
+    "email": "nituchauhan@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Vijay Kumar Gill",
+    "email": "vijay@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Electronics & Communication",
+    "dept_code": "ECE",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Priyanka Bansal",
+    "email": "priyankabansal@mru.edu.in",
+    "designation": "Program Head, Professor",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Piyush Charan",
+    "email": "piyushcharan@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. J. P. Sharma",
+    "email": "jpsharma@mru.edu.in",
+    "designation": "Assoc. Prof. Dy. Director – IIC",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Gurpeet Singh Matharou",
+    "email": "gurpreetmatharou@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Rajnesh Kumar Singh",
+    "email": "rajneshsingh@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Monika Garg",
+    "email": "monikagarg@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Neha Chaudhary",
+    "email": "nehachaudhary@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Robotics & Artificial Intelligence",
+    "dept_code": "R&AI",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Jyotsna Pandit",
+    "email": "jyotsnapandit@mru.edu.in",
+    "designation": "Dean & HOD Sciences",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. D. K. Sharma",
+    "email": "dksharma@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sandeep Kumar",
+    "email": "hodphy@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Jitendra Pal Singh",
+    "email": "jpsingh@mru.edu.in",
+    "designation": "Ramanujan Fellow",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Jai Parkash",
+    "email": "jaiprakash@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Anshuman Sahai",
+    "email": "anshuman@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ananna Bardhan",
+    "email": "ananna@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Deepti Maikhuri",
+    "email": "deepti@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Moditma",
+    "email": "moditma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shiv Kumar Dixit",
+    "email": "shiv@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Meena Kapahi",
+    "email": "meenakapahi@mru.edu.in",
+    "designation": "Professor & Director - International Relations",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. S. K. Shukla",
+    "email": "sudhish@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Arpit Sand",
+    "email": "hodchemistry@mru.edu.in",
+    "designation": "Professor, Program Head",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ekta Rawat",
+    "email": "ekta@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. A. Jayamani",
+    "email": "ajayamani@mru.edu.in",
+    "designation": "Asst. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Priti Gupta",
+    "email": "priti@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Roopa Rani",
+    "email": "rooparani@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Vinayak V Pathak",
+    "email": "vinayakpathak@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Aparna Vyas",
+    "email": "hodmaths@mru.edu.in",
+    "designation": "Assoc. Professor Program Head",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Deepa Arora",
+    "email": "deepa@mru.edu.in",
+    "designation": "Professor, Director – QAA",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Mohd. Javed Idrisi",
+    "email": "mohammadidrisi@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ruchi Gupta",
+    "email": "ruchigupta@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Dinesh Tripathi",
+    "email": "dinesh@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Advin Masih",
+    "email": "advin@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ankita Gaur",
+    "email": "ankita@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Bhawna Singla",
+    "email": "bhawnasingla@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Seema Aggarwal",
+    "email": "seema@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Kushal Lalwani",
+    "email": "kushallalwani@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Sciences",
+    "dept_code": "SCIENCES",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Asha Verma",
+    "email": "dean.law@mru.edu.in",
+    "designation": "Professor, Dean-Law",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shaharyar Asaf Khan",
+    "email": "shaharyarasafkhan@mru.edu.in",
+    "designation": "Professor, & Assoc. Dean - Academics Appl. Sc., Edu",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ruchi Lal",
+    "email": "ruchilal.law@mru.edu.in",
+    "designation": "Professor, HoD - Law",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. S. K. Bose",
+    "email": "skbose@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Anil Dawra",
+    "email": "anildawra@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Superna Venaik",
+    "email": "supernavenaik@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Chhavi Kulshretha",
+    "email": "chhavi@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Tarundeep Kaur",
+    "email": "tarundeep@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Ghazala Abidin",
+    "email": "ghazalaabidin.law@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Harshita Singh",
+    "email": "harshitasingh@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Apala Vatsa",
+    "email": "apalavatsa@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Aditi Choudhary",
+    "email": "aditi@mru.edu.in",
+    "designation": "Law Officer & Asst. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Vani Kataria",
+    "email": "vani.law@mru.edu.in",
+    "designation": "Res. Assoc.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Arushi Malik",
+    "email": "arushimmehta@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Asmita Patel",
+    "email": "asmita@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Chaitali Wadhwa",
+    "email": "chaitali@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Nidhi",
+    "email": "nidhi@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Simran Singh",
+    "email": "simran@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Yamini Atreya",
+    "email": "yaminiatreya.law@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Aaratrika Pandey",
+    "email": "aaratrikapandey.law@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Surabhi Sharma",
+    "email": "surabhisharma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Garima Pahwa",
+    "email": "garimapahwa@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Anupam Sharma",
+    "email": "anupamsharma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Aditya Verma",
+    "email": "adityaverma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Deepak Bansal",
+    "email": "deepakbansal@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Tanvi",
+    "email": "tanvidahiya@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Akanshi Taneja",
+    "email": "akanshitaneja@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Law",
+    "dept_code": "LAW",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Rashima V Varma",
+    "email": "deaneducation@mru.edu.in",
+    "designation": "Dean - Edu. & Hum.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Rashee Singh",
+    "email": "hodeducation@mru.edu.in",
+    "designation": "Professor HoD - Edu. & Hum.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Akhilesh Dwivedi",
+    "email": "akhilesh@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Savita Sharma",
+    "email": "savita@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Eram Aziz",
+    "email": "eramaziz@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Meenal Rawat",
+    "email": "meenalrawat@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Mira Mishra",
+    "email": "miramishra@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Pooja Parmar",
+    "email": "poojaparmar@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Sharv Datt Anand",
+    "email": "sdanand@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Lakshya Malhotra",
+    "email": "lakshyamalhotra@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Ushita Banerjee",
+    "email": "ushitabanerjee@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Aishwarya Sharma",
+    "email": "aishwaryasharma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Prachya Prerna",
+    "email": "prachyaprerna@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Sanskriti Rawat",
+    "email": "sanskriti@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "Education & Humanities",
+    "dept_code": "EDU-Humanities",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sunil Kr. Roy",
+    "email": "sunilkumarroy@mru.edu.in",
+    "designation": "Off. Dean, Professor & HOD",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Yogita Sharma",
+    "email": "yogitasharma@mru.edu.in",
+    "designation": "Professor, Dean Student Welfare",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Pooja Kapoor",
+    "email": "poojakapoor@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Pragati Chauhan",
+    "email": "pragati@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Animesh Singh",
+    "email": "animesh@mru.edu.in",
+    "designation": "Professor",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shweta Goel",
+    "email": "shwetagoel@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Gurpreet Kaur",
+    "email": "gurpreetkaur@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Maharaj Krishen Koul",
+    "email": "mkkoul@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Rashi Banerji",
+    "email": "rashi@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Sahiba Sharma",
+    "email": "sahibasharma@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Teena Hasija",
+    "email": "teenahasija@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Sonal Trivedi",
+    "email": "sonaltrivedi@mru.edu.in",
+    "designation": "Assoc. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Akanchha Singh",
+    "email": "akanchha@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Khushboo Gulati",
+    "email": "khushboogulati@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Minakshi Sharma",
+    "email": "minakshisharma@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Mr. Neeraj Chopra",
+    "email": "neerajchopra@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shagun Chahal",
+    "email": "shagunchahal@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Vandana Bhat",
+    "email": "vandana@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shuchi Singhal",
+    "email": "shuchisinghal@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Shanu Jain",
+    "email": "shanujain@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Ms. Akanksha Kathuria",
+    "email": "akankshakathuria@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Dr. Shelly Aggarwal",
+    "email": "shellyagarwal@mru.edu.in",
+    "designation": "Asstt. Prof.",
+    "department": "School of Business",
+    "dept_code": "BUSINESS",
+    "role": "dept_head"
+  },
+  {
+    "name": "Prof. (Dr.) Deependra Kumar Jha",
+    "email": "vc@mru.edu.in",
+    "designation": "Hon'ble Vice Chancellor",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Prof. (Dr.) Sangita Banga",
+    "email": "pvc@mru.edu.in",
+    "designation": "Pro Vice Chancellor",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Ramesh Nair",
+    "email": "registrar@mru.edu.in",
+    "designation": "Registrar",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Sandeep Bali",
+    "email": "sandeep@mru.edu.in",
+    "designation": "DGM Administration",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Ankita Dey",
+    "email": "manager.intl.admissions@mrvpl.in",
+    "designation": "Manager Intl. Alliances & Admissions",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Jyoti Tiwari",
+    "email": "jyotitiwari@mru.edu.in",
+    "designation": "Assistant Registrar",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Ritika Saggi",
+    "email": "ritikasaggi@mru.edu.in",
+    "designation": "Assistant Registrar",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Manu George",
+    "email": "manu.george@mrei.ac.in",
+    "designation": "Manager IAA",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Rishabh Sharma",
+    "email": "rishabhsharma@mru.edu.in",
+    "designation": "Office Co-ordinator-Admission",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Snigdha Wahi",
+    "email": "snigdhawahi@mru.edu.in",
+    "designation": "Assistant Manager IAA",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Shefali Chopra",
+    "email": "coe@mru.edu.in",
+    "designation": "COE",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Lovleen Nangia",
+    "email": "lovleen@mru.edu.in",
+    "designation": "Sr. Executive Examination",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Satish Arora",
+    "email": "proctor@mru.edu.in",
+    "designation": "Proctor",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Simran Arora",
+    "email": "simranarora@mru.edu.in",
+    "designation": "Receptionist",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Dr. Priyanka Chauhan",
+    "email": "priyankachauhan@mru.edu.in",
+    "designation": "Assistant Controller of Examination",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Shubham",
+    "email": "shubham.examinations@mru.edu.in",
+    "designation": "Executive Examination",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Paramjeet Kaur",
+    "email": "paramjeetkaur.examinations@mru.edu.in",
+    "designation": "Executive Examination",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Priyanka Khatri",
+    "email": "priyankakhatri@mru.edu.in",
+    "designation": "Office Coord. Administration",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Shyam Vij",
+    "email": "shyam.accounts@mriu.edu.in",
+    "designation": "Executive Accounts",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Sunita Kumar",
+    "email": "sunita.accounts@mru.edu.in",
+    "designation": "Sr. Executive Accounts",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Varun Mehta",
+    "email": "varun@mru.edu.in",
+    "designation": "Sr. Executive Administration",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Ruchi Dua",
+    "email": "ruchidua@mru.edu.in",
+    "designation": "Manager HR",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Harish Kumar",
+    "email": "harish@mru.edu.in",
+    "designation": "Assistant Manager",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Anita Pruthi",
+    "email": "anitapruthi@mru.edu.in",
+    "designation": "P.A. to H'ble V.C. Office",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Aastha Sharma",
+    "email": "aasthasharma@mru.edu.in",
+    "designation": "P. A. to H'ble Pro V. C. Office",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Sunil Kr. Dubey",
+    "email": "sunilkumar@mru.edu.in",
+    "designation": "Executive Registrar Office",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Deepak Khurana",
+    "email": "deepakk@mru.edu.in",
+    "designation": "Dy. Manager Research",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Sanjeev Kr Kanojia",
+    "email": "sanjeevkumar@mru.edu.in",
+    "designation": "Office Coord. Computer Sciences",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Gurpreet Kaur",
+    "email": "gurpreet@mru.edu.in",
+    "designation": "Office Coord. Office of International Affairs",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Daljeet Kaur Batra",
+    "email": "daljeetkaur@mru.edu.in",
+    "designation": "Office Coord. Mechanical / Electronics",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Sakshi Choudhary",
+    "email": "sakshichoudhary@mru.edu.in",
+    "designation": "Office Coord. Education",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Kanika Sethi",
+    "email": "kanikasethikapoor@mru.edu.in",
+    "designation": "Office Coord. Law",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Megha Jaiswal",
+    "email": "meghajaiswal@mru.edu.in",
+    "designation": "Asst. Manager Management",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Stuti Sardana",
+    "email": "stutisardana@mru.edu.in",
+    "designation": "Office Coord. Innovation & Incubation",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Ankita Gosain Rangila",
+    "email": "ankitagosain@mru.edu.in",
+    "designation": "Asst. Manager Academics",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Sonu Kaul",
+    "email": "sonukaul@mru.edu.in",
+    "designation": "Office Coord. Ph.D",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Yashita Dhingra",
+    "email": "yashitadhingra@mru.edu.in",
+    "designation": "Office Coord. Dean Student Welfare",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Lipika",
+    "email": "lipikakala@mru.edu.in",
+    "designation": "Office Coord. Sciences & Peace & Sustainability",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Vikram Kumar",
+    "email": "vikramkumar@mru.edu.in",
+    "designation": "Workshop Coordinator Mechanical",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Roushan Bhadani",
+    "email": "roushanbhadani@mru.edu.in",
+    "designation": "Assistant Manager Software Development",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Parveen",
+    "email": "parveen.ict@mrvpl.in",
+    "designation": "Manager IT",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Sumit Sharma",
+    "email": "sumitsharma.ict@mriu.edu.in",
+    "designation": "Assistant Manager IT Help Desk",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Mohit",
+    "email": "mohit.ict@mriu.edu.in",
+    "designation": "IT Help Desk",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Ravi",
+    "email": "ravi.ict@mriu.edu.in",
+    "designation": "Faculty",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Chander Parkash",
+    "email": "chander.ict@mriu.edu.in",
+    "designation": "Faculty",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Dr. Mamta Kaushik",
+    "email": "mamta.deputylibrarian@mru.edu.in",
+    "designation": "Dy. Librarian Central Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Netrapal Singh",
+    "email": "netrapal.library@mru.edu.in",
+    "designation": "Asst. Librarian Central Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Rajesh Kumar",
+    "email": "rajesh.library@mru.edu.in",
+    "designation": "Library Asstt. Central Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Meenakshi Kapil",
+    "email": "meenakshi@mru.edu.in",
+    "designation": "Library Asstt. Law Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Mamta Srivastava",
+    "email": "mamtasrivastava@mru.edu.in",
+    "designation": "Library Asstt. Law Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Ms. Seema Pal",
+    "email": "seemapal.library@mru.edu.in",
+    "designation": "Library Asstt. Education Library",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. L N Joshi",
+    "email": "lnjoshi@mru.edu.in",
+    "designation": "Sr. Technical Asst. CST",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Devender Thapa",
+    "email": "devender@mru.edu.in",
+    "designation": "Lab Technician Mechanical",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Santosh Kr. Baluni",
+    "email": "santosh@mru.edu.in",
+    "designation": "Lab Technician Physics",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Subhash Kumar",
+    "email": "subhash@mru.edu.in",
+    "designation": "Lab Technician Chemistry",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Yogesh",
+    "email": "yogesh@mru.edu.in",
+    "designation": "Lab Technician Mechanical",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Arun Kumar Goyal",
+    "email": "arunkumargoyal@mru.edu.in",
+    "designation": "Lab Technician Electronics & Communication Engineering",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Kasi Ram",
+    "email": "kasiram@mru.edu.in",
+    "designation": "Carpenter Mechanical",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  },
+  {
+    "name": "Mr. Rahul (Mr. Nandu optional)",
+    "email": "rahulnanduoptional@mru.edu.in",
+    "designation": "Pantry Boy",
+    "department": "Central Administration",
+    "dept_code": "ADMIN",
+    "role": "core_team"
+  }
+]
