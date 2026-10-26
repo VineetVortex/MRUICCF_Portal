@@ -63,8 +63,8 @@ export function setAuthSession(accessToken, user) {
   // Schedule renewal at 22 seconds (giving 8 seconds buffer before the strict 30s expiry)
   if (accessToken) {
     _refreshTimeoutId = setTimeout(() => {
-      silentRefresh().catch((err) => {
-        console.warn('[AuthClient] Proactive renewal warning:', err.message);
+      silentRefresh(true).catch((err) => {
+        console.warn('[AuthClient] Proactive renewal notice (retained active session):', err.message);
       });
     }, 22 * 1000);
   }
@@ -89,7 +89,7 @@ export function clearAuthSession() {
  * Rotates the refresh session and retrieves a new 30-second access token.
  * Uses a single in-flight promise lock to prevent concurrent refresh storms.
  */
-export async function silentRefresh() {
+export async function silentRefresh(isProactiveOrInit = false) {
   if (_refreshPromise) {
     return _refreshPromise;
   }
@@ -115,8 +115,11 @@ export async function silentRefresh() {
 
       throw new Error(result.error || 'Failed to obtain refreshed access token');
     } catch (err) {
-      clearAuthSession();
-      notifyListeners('session_expired', { reason: err.message });
+      _inMemoryAccessToken = null;
+      if (!isProactiveOrInit) {
+        clearAuthSession();
+        notifyListeners('session_expired', { reason: err.message });
+      }
       throw err;
     } finally {
       _refreshPromise = null;
@@ -256,7 +259,7 @@ export async function apiResetPassword({ token, newPassword }) {
  */
 export async function initAuthSession() {
   try {
-    const result = await silentRefresh();
+    const result = await silentRefresh(true);
     return result.user || null;
   } catch (err) {
     return null;

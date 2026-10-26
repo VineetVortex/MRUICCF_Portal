@@ -62,11 +62,14 @@ export default function App() {
     // Listen for session expiration events (failed refresh / expired session)
     const unsubscribe = subscribeAuth((event, data) => {
       if (event === 'session_expired') {
-        localStorage.removeItem('mr_iccf_current_user_v1');
-        localStorage.removeItem('mr_iccf_token');
-        setUserData(null);
-        // Landing page always stays open first on open/refresh
-        setView((prev) => (prev === 'landing' ? 'landing' : 'auth'));
+        const storedUser = getCurrentUser();
+        // Only clear and redirect if there is no active local session
+        if (!storedUser) {
+          localStorage.removeItem('mr_iccf_current_user_v1');
+          localStorage.removeItem('mr_iccf_token');
+          setUserData(null);
+          setView((prev) => (prev === 'landing' ? 'landing' : 'auth'));
+        }
       }
     });
     return unsubscribe;

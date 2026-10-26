@@ -108,7 +108,7 @@ function getRefreshCookieOptions() {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: (isProduction ? 'strict' : 'lax') as 'strict' | 'lax',
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     maxAge: config.jwt.refreshExpiresInDays * 24 * 60 * 60 * 1000,
     path: '/', // Accessible to auth refresh and API
   };

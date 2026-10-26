@@ -182,6 +182,19 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     }
   };
 
+  // Instant 1-click access for prototype demo accounts (Student, Faculty, Admin)
+  const handleQuickDemoLogin = (p, e) => {
+    if (e) e.stopPropagation();
+    setEmail(p.email);
+    setPassword(p.password);
+    setError('');
+    const resolved = resolveClientIdentity(p.email, p.name);
+    if (p.name) resolved.name = p.name;
+    // Attempt background API login to register on backend if server is active
+    apiLoginUser({ email: p.email, isGoogleSso: true, name: p.name }).catch(() => {});
+    applyUserSession(resolved);
+  };
+
   // Listen for Supabase Google OAuth return session callback
   useEffect(() => {
     const client = getSupabaseClient();
@@ -1155,17 +1168,12 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 {DEMO_PERSONAS.map((p) => (
                   <div
                     key={p.role}
-                    onClick={() => {
-                      setEmail(p.email);
-                      setPassword(p.password);
-                      setError('');
-                      setSuccessMessage(`Loaded ${p.role} credentials: ${p.email}`);
-                    }}
+                    onClick={() => handleQuickDemoLogin(p)}
                     style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       border: '1px solid rgba(255, 255, 255, 0.16)',
                       borderRadius: '10px',
-                      padding: '8px 12px',
+                      padding: '10px 12px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -1180,11 +1188,11 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                       e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
                       e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
                     }}
-                    title={`Click to fill ${p.role} credentials`}
+                    title={`Click to log in directly as ${p.role}`}
                   >
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#FFFFFF' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FFFFFF' }}>
                           {p.role === 'Student' ? '🎓 Student' : p.role === 'Faculty' ? '🏛️ Faculty' : '🛡️ Admin'}
                         </span>
                         <span style={{ fontSize: '0.70rem', opacity: 0.8, color: '#FFFFFF' }}>({p.name})</span>
@@ -1194,17 +1202,29 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '8px' }}>
-                      <span style={{
-                        fontSize: '0.70rem',
-                        color: '#FDE68A',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontFamily: 'monospace',
-                        fontWeight: 700
-                      }}>
-                        pw: {p.password}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleQuickDemoLogin(p, e)}
+                        style={{
+                          backgroundColor: '#8B1528',
+                          color: '#FFFFFF',
+                          border: '1px solid rgba(255,255,255,0.4)',
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#A31D34'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#8B1528'; }}
+                      >
+                        <span>⚡ 1-Click Login</span>
+                      </button>
                     </div>
                   </div>
                 ))}
