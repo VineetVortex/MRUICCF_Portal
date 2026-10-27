@@ -25,16 +25,16 @@ export default function CertificateView({ setView, currentUser, activeAttempt })
     ? allAttempts.filter(a => a.userId === currentUserId || a.rollNo === currentUser?.rollNo)
     : allAttempts;
 
-  // Resolve current active attempt with fallback to top certified attempt
+  // Resolve current active attempt
   const currentAttempt = (selectedAttemptId
     ? userAttempts.find(a => a.id === selectedAttemptId)
-    : null) || activeAttempt || (userAttempts.length > 0 ? userAttempts[0] : allAttempts[0]) || null;
+    : null) || activeAttempt || (userAttempts.length > 0 ? userAttempts[0] : null);
 
-  const studentName = currentUser?.name || currentAttempt?.studentName || 'Aarav Sharma';
-  const rollNo = currentUser?.rollNo || currentAttempt?.rollNo || '22CSE0002';
-  const department = currentUser?.department || currentAttempt?.department || 'Computer Science & Technology';
-  const overallScore = Math.round(Number(currentAttempt?.overallScore) || 84);
-  const isCertified = Boolean(!currentAttempt || overallScore >= CERTIFICATION_THRESHOLD);
+  const studentName = currentUser?.name || currentAttempt?.studentName || '';
+  const rollNo = currentUser?.rollNo || currentAttempt?.rollNo || '';
+  const department = currentUser?.department || currentAttempt?.department || '';
+  const overallScore = currentAttempt ? Math.round(Number(currentAttempt?.overallScore) || 0) : 0;
+  const isCertified = Boolean(currentAttempt && overallScore >= CERTIFICATION_THRESHOLD);
   const levelInfo = getCompetencyLevel(overallScore);
 
   const certId = currentAttempt?.certificate?.certificateNumber ||

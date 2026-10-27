@@ -689,18 +689,6 @@ export async function getFacultyStudents(req: AuthenticatedRequest, res: Respons
       }
     });
 
-    // Provide pre-seeded department roster if attempts are fresh
-    if (studentMap.size === 0) {
-      const seeded = [
-        { id: '22cse0002', name: 'Aarav Sharma', rollNo: '22CSE0002', department: userDept, cohort: 'Batch 2022-2026', section: 'CST-A', assessmentStatus: 'Certified', overallScore: 84, certificationStatus: 'Certified', isCertified: true, lastActive: '2026-10-14T11:20:00Z', attemptCount: 1 },
-        { id: '22cse0015', name: 'Priya Patel', rollNo: '22CSE0015', department: userDept, cohort: 'Batch 2022-2026', section: 'CST-A', assessmentStatus: 'Certified', overallScore: 78, certificationStatus: 'Certified', isCertified: true, lastActive: '2026-10-12T15:45:00Z', attemptCount: 1 },
-        { id: '22cse0028', name: 'Rohan Verma', rollNo: '22CSE0028', department: userDept, cohort: 'Batch 2022-2026', section: 'CST-B', assessmentStatus: 'Completed', overallScore: 68, certificationStatus: 'Certified', isCertified: true, lastActive: '2026-10-10T09:15:00Z', attemptCount: 1 },
-        { id: '22cse0041', name: 'Ananya Gupta', rollNo: '22CSE0041', department: userDept, cohort: 'Batch 2022-2026', section: 'CST-B', assessmentStatus: 'In Progress', overallScore: 52, certificationStatus: 'Needs Improvement', isCertified: false, lastActive: '2026-10-09T14:30:00Z', attemptCount: 1 },
-        { id: '22cse0054', name: 'Kabir Mehta', rollNo: '22CSE0054', department: userDept, cohort: 'Batch 2022-2026', section: 'CST-C', assessmentStatus: 'Certified', overallScore: 88, certificationStatus: 'Certified', isCertified: true, lastActive: '2026-10-15T08:10:00Z', attemptCount: 2 }
-      ];
-      seeded.forEach(s => studentMap.set(s.id, s));
-    }
-
     let list = Array.from(studentMap.values());
 
     if (search) {
@@ -775,36 +763,10 @@ export async function getFacultyStudentDetail(req: AuthenticatedRequest, res: Re
       return;
     }
 
-    // Default student detail fallback
-    res.status(200).json({
-      success: true,
-      data: {
-        id: String(studentId),
-        name: 'Aarav Sharma',
-        rollNo: String(studentId).toUpperCase(),
-        department: userDept,
-        cohort: 'Batch 2022-2026',
-        attempts: [
-          {
-            id: 'att_demo_01',
-            assessmentName: 'Human-Centric Skills Assessment 2026',
-            overallScore: 84,
-            certificationStatus: 'Certified',
-            isCertified: true,
-            submittedAt: '2026-10-14T11:20:00Z',
-            timeSpent: '38 mins'
-          }
-        ],
-        competencyScores: [
-          { id: 1, name: 'Communication', score: 88, levelLabel: 'Advanced' },
-          { id: 2, name: 'Planning & Organizing', score: 82, levelLabel: 'Proficient' },
-          { id: 6, name: 'Collaboration & Teamwork', score: 86, levelLabel: 'Advanced' },
-          { id: 11, name: 'Ethics & Integrity', score: 92, levelLabel: 'Exemplary' },
-          { id: 14, name: 'Resilience', score: 72, levelLabel: 'Developing' }
-        ],
-        strengths: ['Ethics & Integrity', 'Communication', 'Collaboration & Teamwork'],
-        developmentAreas: ['Resilience', 'Resource Management']
-      }
+    // Return 404 if no attempt/record found
+    res.status(404).json({
+      success: false,
+      error: `No assessment or profile records found for student ID: ${studentId}`
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message || 'Failed to retrieve student profile.' });

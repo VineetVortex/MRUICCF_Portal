@@ -28,20 +28,14 @@ export default function AssessmentView({ setView, currentUser, activeAssessment,
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState(() => {
-    // Restore autosave first
+    // Restore autosave first if available for this assessment
     try {
       const saved = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || '{}');
       if (saved.assessmentId === (activeAssessment?.id || 'asmt-2026-core') && saved.answers) {
         return saved.answers;
       }
     } catch {}
-    // Seed first 15 with realistic defaults
-    const initial = {};
-    for (let i = 0; i < Math.min(15, totalQuestions); i++) {
-      const q = questionsList[i];
-      if (q) initial[q.id] = q.isReverse ? 2 : 4;
-    }
-    return initial;
+    return {};
   });
 
   const [flagged, setFlagged] = useState(new Set());

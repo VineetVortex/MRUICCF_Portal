@@ -86,42 +86,6 @@ const ACADEMIC_YEARS = [
   'Postgraduate / Research'
 ];
 
-const DEMO_PERSONAS = [
-  {
-    role: 'Student',
-    name: 'Aarav Sharma',
-    email: '22cse0002@mru.ac.in',
-    password: 'student123',
-    sub: 'B.Tech CSE (3rd Yr)',
-    icon: GraduationCap,
-    badgeBg: '#ECFDF5',
-    badgeColor: '#047857',
-    iconBg: '#10B981'
-  },
-  {
-    role: 'Faculty',
-    name: 'Dr. Meena Sharma',
-    email: 'hod.cse@mru.edu.in',
-    password: 'faculty123',
-    sub: 'HoD & Faculty (CSE)',
-    icon: Building2,
-    badgeBg: '#EFF6FF',
-    badgeColor: '#1D4ED8',
-    iconBg: '#3B82F6'
-  },
-  {
-    role: 'Admin',
-    name: 'Central Admin',
-    email: 'iccf@mruadmin.edu.in',
-    password: '262310@12',
-    sub: 'Institutional Admin',
-    icon: ShieldCheck,
-    badgeBg: '#FAF5FF',
-    badgeColor: '#7E22CE',
-    iconBg: '#8B1528'
-  }
-];
-
 export default function AuthView({ setView, setUserRole, setUserData }) {
   // Sign In State
   const [email, setEmail] = useState('');
