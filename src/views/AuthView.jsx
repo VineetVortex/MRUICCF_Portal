@@ -211,7 +211,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     const clean = email.trim().toLowerCase();
     if (!clean) return null;
 
-    if (clean === 'vineetkumar182023@gmail.com') {
+    if (clean === 'vineetkumar182023@gmail.com' || clean === 'vineetkr013@gmail.com') {
       return {
         type: 'admin',
         badge: '🛡️ Institutional Admin & Faculty Lead',

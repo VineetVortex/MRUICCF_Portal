@@ -117,9 +117,9 @@ export function getSmtpTransporter(): Transporter {
       user: config.smtp.user,
       pass: config.smtp.pass,
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    connectionTimeout: 4000,
+    greetingTimeout: 2500,
+    socketTimeout: 5000,
     tls: {
       rejectUnauthorized: false,
     },
@@ -276,7 +276,6 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requ
   const subject = `🔐 ${otp} is your Manav Rachna ICCF Login Code`;
   const fromAddress = `${config.smtp.fromName} <onboarding@resend.dev>`;
 
-  // ─── PRIMARY: Resend API ───────────────────────────────────────────────────
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey && resendApiKey.trim().startsWith('re_')) {
     try {
@@ -287,13 +286,45 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requ
       // Resend free tier requires sending from 'onboarding@resend.dev' unless a custom domain is verified
       const senderAddress = process.env.RESEND_FROM || `${config.smtp.fromName || 'Manav Rachna ICCF Portal'} <onboarding@resend.dev>`;
 
-      const { data, error } = await resend.emails.send({
+      let firstAttempt = await resend.emails.send({
         from: senderAddress,
         to: cleanEmail,
         subject,
         html,
         text,
       });
+
+      let data = firstAttempt.data;
+      let error = firstAttempt.error;
+
+      // Resend Free Tier restriction: can only send to registered account owner without domain verification
+      if (error && (error.message?.includes('You can only send testing emails to your own email address') || error.message?.includes('verify a domain'))) {
+        const match = error.message.match(/\(([^)]+)\)/);
+        const ownerEmail = match ? match[1].trim() : 'vineetkumar182023@gmail.com';
+        
+        console.warn(`${logPrefix} [Resend Testing Routing] Recipient ${masked} is unverified on Resend. Forwarding test OTP code to registered admin mailbox: ${maskEmail(ownerEmail)}`);
+        
+        const testingSubject = `🔐 [${cleanEmail}] ${otp} is your Manav Rachna ICCF Login Code`;
+        const testingHtml = `
+          <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.88rem; color: #92400E;">
+            <strong>🧪 Institutional Testing Notification:</strong><br>
+            A login OTP was requested for <strong>${cleanEmail}</strong> (${studentName}).<br>
+            Because Resend domain verification is in progress, testing codes are delivered to your verified admin account: <strong>${ownerEmail}</strong>.
+          </div>
+          ${html}
+        `;
+
+        const secondAttempt = await resend.emails.send({
+          from: senderAddress,
+          to: ownerEmail,
+          subject: testingSubject,
+          html: testingHtml,
+          text: `[Test OTP for ${cleanEmail}]: ${otp}\n\n${text}`,
+        });
+
+        data = secondAttempt.data;
+        error = secondAttempt.error;
+      }
 
       if (error) {
         console.error(`${logPrefix} [Resend ERROR for ${masked}]:`, error.message || error);
