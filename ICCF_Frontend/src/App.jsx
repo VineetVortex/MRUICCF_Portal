@@ -17,12 +17,13 @@ import {
   USER_ROLES, 
   getCurrentUser, 
   setCurrentUser, 
+  logoutUser,
   getStoredAssessments, 
   getStoredAttempts,
   getLatestAttempt,
   handleSeedData 
 } from './lib/storage';
-import { initAuthSession, apiLogoutUser, subscribeAuth } from './lib/authClient';
+import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from './lib/authClient';
 
 export default function App() {
   // Public Credential Verification via QR scan (?verify=MRU-ICCF-...)
@@ -65,27 +66,30 @@ export default function App() {
         const storedUser = getCurrentUser();
         // Only clear and redirect if there is no active local session
         if (!storedUser) {
-          localStorage.removeItem('mr_iccf_current_user_v1');
-          localStorage.removeItem('mr_iccf_token');
+          logoutUser();
+          clearAuthSession();
           setUserData(null);
-          setView((prev) => (prev === 'landing' ? 'landing' : 'auth'));
+          setActiveAttempt(null);
+          setView('landing');
         }
       }
     });
     return unsubscribe;
   }, []);
 
-  // Secure Logout handler
-  const handleLogout = async () => {
-    try {
-      await apiLogoutUser();
-    } catch (e) {
-      // ignore
-    }
-    localStorage.removeItem('mr_iccf_current_user_v1');
-    localStorage.removeItem('mr_iccf_token');
+  // Secure Logout handler: immediately clears state synchronously so UI resets to landing page instantly
+  const handleLogout = () => {
+    // 1. Immediately reset application state
+    logoutUser();
+    clearAuthSession();
     setUserData(null);
+    setActiveAttempt(null);
     setView('landing');
+
+    // 2. Clear backend refresh session and HttpOnly cookie in the background
+    apiLogoutUser().catch((err) => {
+      console.warn('[Logout] Backend session notice:', err);
+    });
   };
 
   // Set authenticated user data and synchronize state

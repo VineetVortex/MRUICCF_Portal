@@ -654,7 +654,22 @@ export const DEFAULT_PORTAL_USER = null;
 export function getCurrentUser() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USER);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const user = JSON.parse(raw);
+      // Auto-purge any legacy mock users cached in user's browser
+      const mockNames = ['Aarav Sharma', 'Priya Patel', 'Rohan Verma', 'Ananya Gupta', 'Kabir Mehta'];
+      const mockEmails = ['22cse0002@mru.ac.in', '21ece0014@mru.ac.in', '23rai0005@mru.ac.in'];
+      if (
+        mockNames.includes(user?.name) || 
+        mockEmails.includes(user?.email?.toLowerCase()) ||
+        user?.id === 'usr_student_aarav'
+      ) {
+        localStorage.removeItem(STORAGE_KEY_USER);
+        localStorage.removeItem('mr_iccf_token');
+        return null;
+      }
+      return user;
+    }
   } catch (e) {
     console.error(e);
   }
@@ -665,6 +680,8 @@ export function logoutUser() {
   try {
     localStorage.removeItem(STORAGE_KEY_USER);
     localStorage.removeItem('mr_iccf_token');
+    localStorage.removeItem('mr_iccf_refresh_token');
+    sessionStorage.clear();
   } catch (e) {
     console.error(e);
   }
