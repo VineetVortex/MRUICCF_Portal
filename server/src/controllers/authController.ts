@@ -40,52 +40,32 @@ interface OtpRecord {
 // In-memory store for active student login OTPs
 const otpStore = new Map<string, OtpRecord>();
 
-// Pre-provisioned student roster cache (to allow pre-authorized students to log in)
+// Pre-provisioned cache for fast OTP lookup (populated only during active OTP sessions, no pre-seeded students)
 const authorizedStudentCache = new Map<string, User>();
 
-// Seed default authorized students for testing/institution access
-const DEFAULT_AUTHORIZED_STUDENTS = [
-  {
-    email: '22cse0002@mru.ac.in',
-    name: 'Aarav Sharma',
-    role: 'student' as UserRole,
-    department: 'Computer Science & Technology',
-    deptCode: 'CST',
-    rollNo: '22CSE0002',
-    year: 'Batch 2022-2026',
-    designation: 'Undergraduate Student',
-  },
-  {
-    email: '21ece0014@mru.ac.in',
-    name: 'Rohan Verma',
-    role: 'student' as UserRole,
-    department: 'Electronics & Communication',
-    deptCode: 'ECE',
-    rollNo: '21ECE0014',
-    year: 'Batch 2021-2025',
-    designation: 'Undergraduate Student',
-  },
-  {
-    email: '23rai0005@mru.ac.in',
-    name: 'Ananya Gupta',
-    role: 'student' as UserRole,
-    department: 'Robotics & Artificial Intelligence',
-    deptCode: 'RAI',
-    rollNo: '23RAI0005',
-    year: 'Batch 2023-2027',
-    designation: 'Undergraduate Student',
+/**
+ * Persists / upserts user profile to public.users on every verified login.
+ * This ensures the database has a real record for every authenticated user.
+ */
+async function saveUserToDb(user: User): Promise<void> {
+  try {
+    const db = getDb();
+    await db.from('users').upsert({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      department: user.department || null,
+      dept_code: user.deptCode || null,
+      roll_no: user.rollNo || null,
+      year: user.year || null,
+      designation: user.designation || null,
+      last_login_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+  } catch (err: any) {
+    console.warn('[Auth] Notice persisting user profile to database:', err?.message || err);
   }
-];
-
-DEFAULT_AUTHORIZED_STUDENTS.forEach(s => {
-  const uid = `usr_${s.email.split('@')[0]}`;
-  authorizedStudentCache.set(s.email.toLowerCase(), {
-    id: uid,
-    uid: uid,
-    ...s,
-    lastLoginAt: new Date().toISOString()
-  });
-});
+}
 
 try {
   const jsonPath = path.resolve(process.cwd(), 'src/data/mruFacultyDirectory.json');
@@ -356,6 +336,9 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
 
   // Direct login for Google Workspace SSO verified accounts
   if (isGoogleSso) {
+    user.lastLoginAt = new Date().toISOString();
+    // Persist Google SSO user to Supabase public.users immediately on login
+    saveUserToDb(user).catch(() => {});
     const accessToken = generateAccessToken(user);
     const { rawToken } = await createRefreshSession({
       userId: user.id,
@@ -363,6 +346,10 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
       ipAddress: req.ip,
     });
     res.cookie(config.cookie.refreshCookieName, rawToken, getRefreshCookieOptions());
+    logAuditEvent('AUTH_LOG', `${user.role.toUpperCase()} signed in via Google SSO: ${user.name} (${user.email})`, user.id, {
+      email: user.email,
+      role: user.role
+    });
     res.status(200).json({
       success: true,
       message: `Welcome, ${user.name}! Authenticated as ${user.role}.`,
@@ -445,6 +432,9 @@ export async function verifyLoginOtp(req: AuthenticatedRequest, res: Response): 
   const user = record.user;
   user.lastLoginAt = new Date().toISOString();
   otpStore.delete(cleanEmail);
+
+  // Persist user profile to Supabase public.users (creates or updates on every login)
+  saveUserToDb(user).catch(() => {});
 
   // Generate 30-second access token + refresh session
   const accessToken = generateAccessToken(user);

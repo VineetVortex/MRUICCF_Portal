@@ -682,6 +682,31 @@ export function setCurrentUser(user) {
   }
   if (user) {
     logEvent(LOG_CATEGORIES.AUTH_LOG, `User logged in: ${user?.name || 'User'} (${user?.role})`, { role: user?.role, email: user?.email });
+    
+    // Direct sync to Supabase public.users to ensure logins are stored in the database
+    const client = getSupabaseClient();
+    if (client && user.id && user.email) {
+      client.from('users').upsert({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        department: user.department || null,
+        dept_code: user.deptCode || null,
+        roll_no: user.rollNo || null,
+        year: user.year || null,
+        designation: user.designation || null,
+        last_login_at: new Date().toISOString()
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (!error) {
+          console.log('[Supabase] User login record saved to database:', user.email);
+        } else {
+          console.warn('[Supabase] User save warning:', error.message);
+        }
+      }).catch(err => {
+        console.warn('[Supabase] User sync notice:', err);
+      });
+    }
   }
 }
 
