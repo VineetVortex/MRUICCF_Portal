@@ -748,8 +748,45 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 </button>
               </div>
 
-
-
+              {activeOtpDev && (
+                <div style={{
+                  backgroundColor: '#FEF3C7',
+                  border: '1px dashed #F59E0B',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '0.85rem',
+                  color: '#92400E'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'block', color: '#B45309' }}>
+                      ⚡ Instant Verification Code:
+                    </span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.25em', color: '#92400E' }}>
+                      {activeOtpDev}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOtpCode(activeOtpDev)}
+                    style={{
+                      backgroundColor: '#D97706',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 14px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(217, 119, 6, 0.2)'
+                    }}
+                  >
+                    Auto-fill Code
+                  </button>
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '6px' }}>
