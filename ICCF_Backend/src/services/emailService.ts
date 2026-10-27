@@ -10,7 +10,7 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
 
   const resendApiKey = process.env.RESEND_API_KEY;
   const brevoApiKey = process.env.BREVO_API_KEY;
@@ -75,30 +75,22 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
   // 1. Try Standard Gmail / Google Workspace SMTP (100% Free, Zero Payment/Card Required)
   if (smtpUser && smtpPass) {
     try {
-      const isGmail = smtpHost.includes('gmail');
-      const transporter = isGmail
-        ? nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-              user: smtpUser,
-              pass: smtpPass.replace(/\s+/g, ''),
-            },
-            tls: {
-              rejectUnauthorized: false
-            }
-          })
-        : nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465,
-            auth: {
-              user: smtpUser,
-              pass: smtpPass.replace(/\s+/g, ''),
-            },
-            tls: {
-              rejectUnauthorized: false
-            }
-          });
+      const port = Number(process.env.SMTP_PORT) || 465;
+      const isSecure = port === 465;
+      const cleanPass = smtpPass.replace(/\s+/g, '');
+
+      const transporter = nodemailer.createTransport({
+        host: smtpHost || 'smtp.gmail.com',
+        port: port,
+        secure: isSecure,
+        auth: {
+          user: smtpUser,
+          pass: cleanPass,
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
 
       await transporter.sendMail({
         from: `"${senderName}" <${smtpUser}>`,
