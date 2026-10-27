@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Download, Award, ArrowUpRight, CheckCircle, FileText, Sparkles,
   ArrowRight, TrendingUp, AlertTriangle, Lightbulb, History,
-  CheckCircle2, Clock, RotateCcw, BarChart2, Target, ChevronRight
+  CheckCircle2, Clock, RotateCcw, BarChart2, Target, ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 import ScoreGauge from '../components/ScoreGauge';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
@@ -165,12 +166,35 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {isCertified && (
+              <button
+                onClick={() => {
+                  const certId = attempt?.certificate?.certificateNumber || `MRU-ICCF-${currentUser?.rollNo || attempt?.rollNo || 'GEN'}-${new Date(attempt.timestamp).getFullYear()}`;
+                  const verifyUrl = `${window.location.origin}/?verify=${encodeURIComponent(certId)}`;
+                  const title = encodeURIComponent(`Institutional Competency Certification (ICCF) - ${levelInfo?.level || 'Proficient'}`);
+                  const org = encodeURIComponent('Manav Rachna Educational Institutions');
+                  const date = new Date(attempt.timestamp);
+                  const url = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${title}&organizationName=${org}&issueYear=${date.getFullYear()}&issueMonth=${date.getMonth() + 1}&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(certId)}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '9px 16px', borderRadius: '10px',
+                  backgroundColor: '#0A66C2', color: '#FFFFFF', fontWeight: 700,
+                  fontSize: '0.88rem', border: 'none', cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(10, 102, 194, 0.25)'
+                }}
+              >
+                <ExternalLink size={15} />
+                <span>Add to LinkedIn</span>
+              </button>
+            )}
             <button onClick={() => window.print()} className="btn-secondary" style={{ padding: '9px 18px', fontSize: '0.88rem' }}>
               <Download size={15} /> <span>Export PDF</span>
             </button>
             {isCertified ? (
               <button onClick={() => setView('certificate')} className="btn-primary" style={{ padding: '9px 22px', fontSize: '0.88rem' }}>
-                <span>View Certificate</span> <ArrowRight size={15} />
+                <Award size={15} /> <span>View & Download Certificate</span> <ArrowRight size={15} />
               </button>
             ) : (
               <button onClick={() => setView('assessment')} className="btn-primary" style={{ padding: '9px 22px', fontSize: '0.88rem', backgroundColor: '#D97706' }}>

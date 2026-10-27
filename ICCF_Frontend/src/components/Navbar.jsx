@@ -62,7 +62,7 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
   const currentRoleInfo = roleLabels[userRole] || roleLabels[USER_ROLES.STUDENT];
 
   return (
-    <header style={{
+    <header className="no-print" style={{
       position: 'sticky',
       top: 0,
       zIndex: 50,

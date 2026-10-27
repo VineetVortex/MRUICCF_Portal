@@ -248,18 +248,30 @@ input, select, textarea {
 
 /* Print Certificate Specifics */
 @media print {
-  body {
-    background: #FFFFFF !important;
+  @page {
+    size: landscape;
+    margin: 8mm;
   }
-  .no-print {
+  html, body {
+    background: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print, header, nav, .desktop-nav, .mobile-bottom-nav {
     display: none !important;
   }
   .print-area {
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 auto !important;
+    padding: 16px !important;
     box-shadow: none !important;
-    border: none !important;
     width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

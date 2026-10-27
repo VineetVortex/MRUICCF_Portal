@@ -3,7 +3,7 @@ import {
   ClipboardList, CheckCircle2, Award, Target, ArrowRight,
   Calendar, Clock, ChevronRight, TrendingUp, AlertCircle,
   RotateCcw, History, FileCheck, Sparkles, BookOpen, X, Info,
-  Zap, Sun, Moon, Sunset
+  Zap, Sun, Moon, Sunset, ExternalLink
 } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
@@ -107,6 +107,21 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
   const GIcon = greeting.Icon;
 
   const fmt = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const handleLinkedInShare = () => {
+    const certId = latestAttempt?.certificate?.certificateNumber ||
+      `MRU-ICCF-${currentUser?.rollNo || 'GEN'}-${new Date(latestAttempt?.timestamp || Date.now()).getFullYear()}-${(latestAttempt?.id || '01').slice(-4).toUpperCase()}`;
+    const verifyUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/?verify=${encodeURIComponent(certId)}`
+      : `https://verify.mru.edu.in/cert/${encodeURIComponent(certId)}`;
+    const title = encodeURIComponent(`Institutional Competency Certification (ICCF) - ${levelInfo?.level || 'Proficient'}`);
+    const org = encodeURIComponent('Manav Rachna Educational Institutions');
+    const date = new Date(latestAttempt?.timestamp || Date.now());
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const url = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${title}&organizationName=${org}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(certId)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div style={{ padding: '24px 0 80px 0' }} className="animate-fade-in">
@@ -264,16 +279,28 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
                 </p>
               </div>
             </div>
-            <button onClick={() => setView('certificate')} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              padding: '11px 22px', borderRadius: '12px',
-              backgroundColor: '#16A34A', color: '#FFFFFF', fontWeight: 700,
-              fontSize: '0.88rem', border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
-            }}>
-              <FileCheck size={16} />
-              <span>View &amp; Download Certificate</span>
-            </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button onClick={() => setView('certificate')} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '11px 20px', borderRadius: '12px',
+                backgroundColor: '#16A34A', color: '#FFFFFF', fontWeight: 700,
+                fontSize: '0.88rem', border: 'none', cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
+              }}>
+                <FileCheck size={16} />
+                <span>View &amp; Download Certificate</span>
+              </button>
+              <button onClick={handleLinkedInShare} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '11px 18px', borderRadius: '12px',
+                backgroundColor: '#0A66C2', color: '#FFFFFF', fontWeight: 700,
+                fontSize: '0.88rem', border: 'none', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(10, 102, 194, 0.25)'
+              }}>
+                <ExternalLink size={15} />
+                <span>Add to LinkedIn</span>
+              </button>
+            </div>
           </div>
         )}
 
