@@ -95,7 +95,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
   // Student OTP Verification Step
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
-  const [resendTimer, setResendTimer] = useState(60);
+  const [resendTimer, setResendTimer] = useState(0);
 
   // Password Recovery State (Self-Service for existing accounts)
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -189,23 +189,29 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     }
   }, []);
 
-  // Countdown timer for OTP resend
+  // Countdown timer for OTP resend and rate-limit cooldown
   useEffect(() => {
     let interval;
-    if (isOtpStep && resendTimer > 0) {
+    if (resendTimer > 0) {
       interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setError((curr) => (curr && curr.includes('seconds') ? '' : curr));
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isOtpStep, resendTimer]);
+  }, [resendTimer]);
 
   // Real-time Identity Preview for Sign In
   const getSignInPreview = () => {
     const clean = email.trim().toLowerCase();
     if (!clean) return null;
 
-    if (clean === 'vineetkumar182023@gmail.com') {
+    if (clean === 'vineetkumar182023@gmail.com' || clean === 'vineetkr013@gmail.com') {
       return {
         type: 'admin',
         badge: '🛡️ Institutional Admin & Faculty Lead',
@@ -313,6 +319,9 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
         return;
       }
 
+      if (result.cooldownSeconds) {
+        setResendTimer(result.cooldownSeconds);
+      }
       setError(result.error || 'Authentication failed. Please verify your email or contact IT Support.');
       setIsLoading(false);
     } catch (err) {
@@ -944,7 +953,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={isLoading}
+                  disabled={isLoading || resendTimer > 0}
                   style={{
                     width: '100%',
                     padding: '13px',
@@ -955,14 +964,19 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    opacity: isLoading ? 0.8 : 1,
-                    cursor: isLoading ? 'not-allowed' : 'pointer'
+                    opacity: (isLoading || resendTimer > 0) ? 0.75 : 1,
+                    cursor: (isLoading || resendTimer > 0) ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {isLoading ? (
                     <>
                       <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
                       <span>Sending Verification Code…</span>
+                    </>
+                  ) : resendTimer > 0 ? (
+                    <>
+                      <RotateCw size={15} />
+                      <span>Wait {resendTimer}s before requesting code</span>
                     </>
                   ) : (
                     <>
