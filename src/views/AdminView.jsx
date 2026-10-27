@@ -895,6 +895,24 @@ export default function AdminView({
             </div>
 
             <button
+              onClick={() => setView('faculty')}
+              className="btn-primary"
+              style={{
+                padding: '8px 16px',
+                fontSize: '0.82rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: '#0D9488',
+                borderColor: '#0D9488'
+              }}
+              title="Open Faculty Assessment & Moderation Console"
+            >
+              <Building2 size={14} />
+              <span>Faculty Console</span>
+            </button>
+
+            <button
               onClick={() => window.print()}
               className="btn-secondary"
               style={{ padding: '8px 14px', fontSize: '0.82rem' }}

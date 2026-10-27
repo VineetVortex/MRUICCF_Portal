@@ -111,7 +111,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
 
   // Google Workspace SSO State
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('Vineetkumar182023@gmail.com');
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
   const [googleModalError, setGoogleModalError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -428,7 +428,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     setShowGoogleModal(true);
   };
 
-  // Execute Google Workspace Single Sign-On for selected identity
+  // Execute Google Workspace Sign-In: routes through OTP verification to protect security
   const executeGoogleSignIn = async (userEmail, userName) => {
     setIsGoogleLoading(true);
     setGoogleModalError('');
@@ -440,28 +440,29 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       return;
     }
 
+    // Close Google modal and populate main login form to trigger OTP flow
+    setShowGoogleModal(false);
+    setIsGoogleLoading(false);
+    setEmail(clean);
+
+    // Trigger OTP request
+    setIsLoading(true);
     try {
-      const res = await apiLoginUser({ email: userEmail, isGoogleSso: true, name: userName });
-      if (res.success && (res.data?.user || res.user)) {
-        const user = res.data?.user || res.user;
-        setShowGoogleModal(false);
-        setIsGoogleLoading(false);
-        applyUserSession(user);
-        return;
-      }
-      setGoogleModalError(res.error || 'Account not pre-provisioned in institutional directory.');
-      setIsGoogleLoading(false);
+      const result = await apiLoginUser({ email: clean });
+      setIsOtpStep(true);
+      setResendTimer(60);
+      setSuccessMessage(result.message || `A 6-digit verification code has been dispatched to ${clean}.`);
     } catch (err) {
       try {
-        const fallbackUser = resolveClientIdentity(userEmail);
-        if (userName) fallbackUser.name = userName;
-        setShowGoogleModal(false);
-        setIsGoogleLoading(false);
-        applyUserSession(fallbackUser);
+        generateClientOtp(clean);
+        setIsOtpStep(true);
+        setResendTimer(60);
+        setSuccessMessage(`Security OTP dispatched to ${clean}.`);
       } catch (e) {
-        setGoogleModalError('Google authentication failed. Please verify this is an authorized university email.');
-        setIsGoogleLoading(false);
+        setError('Unable to authenticate with provided email.');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
