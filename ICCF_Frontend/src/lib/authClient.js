@@ -9,10 +9,10 @@
  */
 
 const ENV_API_URL = import.meta.env.VITE_API_URL || '';
-const isProd = import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'));
-const API_BASE_URL = (isProd && (!ENV_API_URL || ENV_API_URL.includes('localhost:5000')))
-  ? 'https://mruiccf-portal.onrender.com/api'
-  : (ENV_API_URL || '/api');
+// In production on Vercel/Netlify, relative /api routes through vercel.json reverse proxy for same-origin cookie security
+const API_BASE_URL = (ENV_API_URL && !ENV_API_URL.includes('localhost:5000'))
+  ? ENV_API_URL.replace(/\/$/, '')
+  : '/api';
 
 let _inMemoryAccessToken = null;
 let _currentUser = null;
@@ -200,7 +200,9 @@ export async function apiLoginUser({ email, password, isGoogleSso, name }) {
           success: true, 
           requireOtp: true, 
           email: data.email, 
-          message: data.message || `A 6-digit verification code has been dispatched to ${email}.` 
+          message: data.message || `A 6-digit verification code has been dispatched to ${email}.`,
+          cooldownSeconds: data.cooldownSeconds || 60,
+          requestId: data.requestId,
         };
       }
       if (data.data?.accessToken) {
@@ -217,7 +219,8 @@ export async function apiLoginUser({ email, password, isGoogleSso, name }) {
         : (res.status === 502 
           ? 'Email dispatch service is temporarily unavailable. Please try again shortly.' 
           : 'Authentication failed. Please verify your email.')),
-      cooldownSeconds: data.cooldownSeconds
+      cooldownSeconds: data.cooldownSeconds,
+      requestId: data.requestId,
     };
   } catch (err) {
     return {
@@ -248,7 +251,8 @@ export async function apiVerifyOtp({ email, otp }) {
     return {
       success: false,
       status: res.status,
-      error: data.error || 'Invalid verification code. Please check your email and try again.'
+      error: data.error || 'Invalid verification code. Please check your email and try again.',
+      requestId: data.requestId,
     };
   } catch (err) {
     return {
@@ -275,7 +279,8 @@ export async function apiResendOtp({ email }) {
       return { 
         success: true, 
         message: data.message || `A new verification code has been dispatched to ${email}.`,
-        cooldownSeconds: data.cooldownSeconds || 60
+        cooldownSeconds: data.cooldownSeconds || 60,
+        requestId: data.requestId,
       };
     }
 
@@ -284,8 +289,11 @@ export async function apiResendOtp({ email }) {
       status: res.status,
       error: data.error || (res.status === 429 
         ? 'Please wait before requesting another verification code.' 
-        : 'Failed to dispatch new verification code. Please try again shortly.'),
-      cooldownSeconds: data.cooldownSeconds
+        : (res.status === 502
+          ? 'Email dispatch service is temporarily unavailable. Please try again shortly.'
+          : 'Failed to dispatch new verification code. Please try again shortly.')),
+      cooldownSeconds: data.cooldownSeconds,
+      requestId: data.requestId,
     };
   } catch (err) {
     return {

@@ -431,7 +431,28 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
   // Unified Secure Cryptographic 6-Digit OTP Generation
   const otp = generateSecureOtp();
   const otpHash = hashOtp(otp);
+  const requestId = crypto.randomUUID();
 
+  const emailResult = await sendOtpEmail({
+    toEmail: user.email,
+    studentName: user.name,
+    otp,
+    requestId,
+  });
+
+  if (!emailResult.success) {
+    // CRITICAL: Ensure failed delivery does not lock out user with a cooldown!
+    otpStore.delete(user.email);
+    console.error(`[Auth Diagnostic] [${requestId}] OTP delivery failed for ${maskEmail(user.email)}: ${emailResult.error} (Code: ${emailResult.errorCode || 'UNKNOWN'})`);
+    res.status(502).json({
+      success: false,
+      error: 'Failed to deliver verification code to your email. Please verify your email configuration or contact university IT.',
+      requestId,
+    });
+    return;
+  }
+
+  // Delivery succeeded: Record OTP in otpStore with 60s cooldown timestamp
   otpStore.set(user.email, {
     otpHash,
     user,
@@ -440,28 +461,13 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     lastRequestedAt: Date.now(),
   });
 
-  console.log(`[OTP DISPATCH] 6-digit verification code generated for ${maskEmail(user.email)} (expires in 10m)`);
+  console.log(`[OTP DISPATCH] [${requestId}] 6-digit verification code delivered to SMTP for ${maskEmail(user.email)} (expires in 10m)`);
   logAuditEvent('AUTH_LOG', `Login OTP generated for ${user.role} ${maskEmail(user.email)}`, user.id, {
     email: user.email,
     role: user.role,
-    designation: user.designation
+    designation: user.designation,
+    requestId,
   });
-
-  const emailResult = await sendOtpEmail({
-    toEmail: user.email,
-    studentName: user.name,
-    otp,
-  });
-
-  if (!emailResult.success) {
-    console.error(`[OTP Delivery Failed] Could not deliver OTP to ${maskEmail(user.email)}: ${emailResult.error}`);
-    res.status(502).json({
-      success: false,
-      error: 'Failed to deliver verification code to your email. Please try again shortly or contact university IT.',
-      details: config.isProduction ? undefined : emailResult.message,
-    });
-    return;
-  }
 
   res.status(200).json({
     success: true,
@@ -471,6 +477,8 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     name: user.name,
     designation: user.designation,
     message: `A 6-digit verification code has been dispatched to ${user.email}.`,
+    cooldownSeconds: 60,
+    requestId,
   });
 }
 
@@ -582,6 +590,24 @@ export async function resendLoginOtp(req: AuthenticatedRequest, res: Response): 
 
   const otp = generateSecureOtp();
   const otpHash = hashOtp(otp);
+  const requestId = crypto.randomUUID();
+
+  const emailResult = await sendOtpEmail({
+    toEmail: cleanEmail,
+    studentName: user.name,
+    otp,
+    requestId,
+  });
+
+  if (!emailResult.success) {
+    console.error(`[Auth Diagnostic] [${requestId}] OTP resend failed for ${maskEmail(cleanEmail)}: ${emailResult.error} (Code: ${emailResult.errorCode || 'UNKNOWN'})`);
+    res.status(502).json({
+      success: false,
+      error: 'Failed to deliver new verification code. Please try again shortly.',
+      requestId,
+    });
+    return;
+  }
 
   otpStore.set(cleanEmail, {
     otpHash,
@@ -591,27 +617,13 @@ export async function resendLoginOtp(req: AuthenticatedRequest, res: Response): 
     lastRequestedAt: Date.now(),
   });
 
-  console.log(`[OTP RESEND] New 6-digit verification code generated for ${maskEmail(cleanEmail)} (expires in 10m)`);
-
-  const emailResult = await sendOtpEmail({
-    toEmail: cleanEmail,
-    studentName: user.name,
-    otp,
-  });
-
-  if (!emailResult.success) {
-    console.error(`[OTP Resend Failed] Could not deliver OTP to ${maskEmail(cleanEmail)}: ${emailResult.error}`);
-    res.status(502).json({
-      success: false,
-      error: 'Failed to deliver new verification code. Please try again shortly.',
-      details: config.isProduction ? undefined : emailResult.message,
-    });
-    return;
-  }
+  console.log(`[OTP RESEND] [${requestId}] New 6-digit verification code delivered to SMTP for ${maskEmail(cleanEmail)} (expires in 10m)`);
 
   res.status(200).json({
     success: true,
     message: `New verification code dispatched to ${cleanEmail}.`,
+    cooldownSeconds: 60,
+    requestId,
   });
 }
 

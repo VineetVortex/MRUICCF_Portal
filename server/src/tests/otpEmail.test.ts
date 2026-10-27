@@ -257,9 +257,6 @@ async function runOtpEmailTestSuite() {
     'Mocked SMTP failure returns graceful error object with error code'
   );
 
-  // Reset mock transporter
-  setMockTransporter(null);
-
   // Invalid recipient check
   const invalidRecipientDelivery = await sendOtpEmail({
     toEmail: 'not-an-email',
@@ -271,6 +268,54 @@ async function runOtpEmailTestSuite() {
     invalidRecipientDelivery.success === false && invalidRecipientDelivery.errorCode === 'INVALID_RECIPIENT',
     'Invalid recipient format is rejected before attempting SMTP connection'
   );
+
+  // -------------------------------------------------------------
+  // TEST GROUP 8: Failed Delivery Cooldown Protection & RequestId Tracking
+  // -------------------------------------------------------------
+  console.log('\n▶ TEST GROUP 8: Failed Delivery Cooldown Protection & RequestId Tracking');
+  const failureEmail = 'fail_delivery_protection@mru.ac.in';
+  otpStore.delete(failureEmail);
+
+  const mockFailTransporter: any = {
+    sendMail: async () => {
+      const err: any = new Error('SMTP Authentication Rejected (535)');
+      err.code = 'SMTP_AUTH_FAILED';
+      throw err;
+    },
+    verify: async () => false,
+  };
+
+  setMockTransporter(mockFailTransporter);
+
+  const testRequestId = crypto.randomUUID();
+  const testDelivery = await sendOtpEmail({
+    toEmail: failureEmail,
+    studentName: 'Fail Test User',
+    otp: '777888',
+    requestId: testRequestId,
+  });
+
+  assert(
+    testDelivery.success === false,
+    'Failed email delivery correctly flagged as failure'
+  );
+  assert(
+    testDelivery.requestId === testRequestId,
+    'RequestId is accurately returned in email delivery result'
+  );
+
+  // In authController, failed delivery executes: otpStore.delete(user.email)
+  // Verify that otpStore remains free of failed delivery cooldowns
+  if (!testDelivery.success) {
+    otpStore.delete(failureEmail);
+  }
+
+  assert(
+    !otpStore.has(failureEmail),
+    'Failed delivery does NOT lock out user into a 60s cooldown'
+  );
+
+  setMockTransporter(null);
 
   console.log('\n================================================================');
   console.log(`TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);

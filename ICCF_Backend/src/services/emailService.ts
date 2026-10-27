@@ -284,9 +284,8 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requ
       const { Resend } = await import('resend');
       const resend = new Resend(resendApiKey.trim());
 
-      const senderAddress = config.smtp.fromEmail && config.smtp.fromEmail.includes('@')
-        ? `${config.smtp.fromName} <${config.smtp.fromEmail}>`
-        : fromAddress;
+      // Resend free tier requires sending from 'onboarding@resend.dev' unless a custom domain is verified
+      const senderAddress = process.env.RESEND_FROM || `${config.smtp.fromName || 'Manav Rachna ICCF Portal'} <onboarding@resend.dev>`;
 
       const { data, error } = await resend.emails.send({
         from: senderAddress,
