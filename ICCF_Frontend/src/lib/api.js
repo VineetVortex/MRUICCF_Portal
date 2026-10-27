@@ -219,6 +219,16 @@ export async function apiSubmitAttempt(attemptPayload) {
   }
 }
 
+export async function apiGetAllAttempts() {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/attempts`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
 export async function apiGetUserAttempts(userId) {
   try {
     const res = await authFetch(`${API_BASE_URL}/attempts/user/${userId}`);

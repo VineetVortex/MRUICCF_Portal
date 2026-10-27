@@ -244,3 +244,40 @@ export async function getAttemptById(req: AuthenticatedRequest, res: Response): 
     res.status(500).json({ success: false, error: err.message || 'Failed to fetch attempt.' });
   }
 }
+
+export async function getAllAttempts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const db = getDb();
+    const { data, error } = await db
+      .from('attempts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formatted: AttemptResult[] = (data || []).map((d: any) => ({
+      id: d.id,
+      userId: d.user_id,
+      studentName: d.student_name,
+      rollNo: d.roll_no,
+      department: d.department,
+      assessmentId: d.assessment_id,
+      assessmentName: d.assessment_name,
+      overallScore: Number(d.overall_score),
+      certificationStatus: d.certification_status,
+      isCertified: Boolean(d.is_certified),
+      timeSpentSeconds: Number(d.time_spent_seconds || 0),
+      timeTakenFormatted: d.time_taken_formatted,
+      totalQuestions: Number(d.total_questions || 0),
+      answers: d.answers || {},
+      competencyScores: d.competency_scores || [],
+      strengths: d.strengths || [],
+      developmentAreas: d.development_areas || [],
+      createdAt: d.created_at,
+    }));
+
+    res.status(200).json({ success: true, count: formatted.length, data: formatted });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to fetch all attempts.' });
+  }
+}

@@ -53,6 +53,7 @@ import {
   saveAssessments,
   saveQuestions,
   fetchLiveQuestions,
+  fetchLiveAttempts,
   handleSeedData,
   USER_ROLES 
 } from '../lib/storage';
@@ -150,6 +151,9 @@ export default function AdminView({
     fetchLiveQuestions().then((live) => {
       if (live && live.length > 0) setQuestions(live);
       setIsLoadingQb(false);
+    });
+    fetchLiveAttempts().then((liveAtt) => {
+      if (liveAtt && liveAtt.length > 0) setAttempts(liveAtt);
     });
     apiGetQuestionBankStats().then((res) => {
       if (res && res.success && res.data) setQbStats(res.data);

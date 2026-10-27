@@ -301,14 +301,54 @@ export async function batchRejectQuestions(questionIds = [], reviewerName = 'Dep
 }
 
 // Assessments
+export function getInitialAssessments() {
+  return [
+    {
+      id: 'asmt-2026-core',
+      name: '2026 Institutional Human-Centric Skills Assessment',
+      department: 'All Departments (University-wide)',
+      departmentId: 'dept_all',
+      timeLimit: 45,
+      questionsPerCompetency: 10,
+      totalQuestions: 150,
+      active: true,
+      scheduledAt: new Date().toISOString(),
+      description: 'Comprehensive baseline institutional assessment across all 15 competency dimensions.',
+      createdBy: 'Academic Council'
+    },
+    {
+      id: 'asmt-cst-diagnostic-2026',
+      name: 'B.Tech CST 3rd Year Mid-Term Diagnostic',
+      department: 'Computer Science & Technology',
+      departmentId: 'dept_cst',
+      timeLimit: 30,
+      questionsPerCompetency: 4,
+      totalQuestions: 60,
+      active: true,
+      scheduledAt: new Date().toISOString(),
+      description: 'Departmental competency benchmark focused on Technical Communication, Teamwork, and Ethics.',
+      createdBy: 'Vineet Kumar'
+    }
+  ];
+}
+
 export function getStoredAssessments() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ASSESSMENTS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error(e);
   }
-  return [];
+  const init = getInitialAssessments();
+  try {
+    localStorage.setItem(STORAGE_KEY_ASSESSMENTS, JSON.stringify(init));
+  } catch (e) {}
+  return init;
 }
 
 export function saveAssessments(assessments) {
@@ -447,19 +487,218 @@ export async function deleteAttempt(attemptId, adminName = 'Admin') {
 }
 
 // Attempts & Certification
+export function getInitialAttempts() {
+  return [
+    {
+      id: 'att_22cse0002_01',
+      userId: 'usr_22cse0002',
+      studentName: 'Aarav Sharma',
+      rollNo: '22CSE0002',
+      department: 'Computer Science & Technology',
+      assessmentId: 'asmt-2026-core',
+      assessmentName: '2026 Institutional Human-Centric Skills Assessment',
+      overallScore: 84,
+      certificationStatus: 'Certified',
+      isCertified: true,
+      timeSpentSeconds: 2140,
+      timeTakenFormatted: '35m 40s',
+      totalQuestions: 150,
+      timestamp: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+      competencyScores: [
+        { id: 1, name: 'Communication', score: 88, level: 'Advanced' },
+        { id: 2, name: 'Planning & Organizing', score: 82, level: 'Proficient' },
+        { id: 3, name: 'Professionalism', score: 85, level: 'Advanced' },
+        { id: 4, name: 'Resource Management', score: 79, level: 'Proficient' },
+        { id: 5, name: 'Building Trust', score: 90, level: 'Advanced' },
+        { id: 6, name: 'Collaboration & Teamwork', score: 92, level: 'Advanced' },
+        { id: 7, name: 'Conflict Resolution', score: 75, level: 'Proficient' },
+        { id: 8, name: 'Emotional Intelligence', score: 86, level: 'Advanced' },
+        { id: 9, name: 'Empathy', score: 84, level: 'Advanced' },
+        { id: 10, name: 'Inclusion & Diversity', score: 89, level: 'Advanced' },
+        { id: 11, name: 'Ethics & Integrity', score: 94, level: 'Mastery' },
+        { id: 12, name: 'Accountability', score: 80, level: 'Proficient' },
+        { id: 13, name: 'Lifelong Learning', score: 83, level: 'Advanced' },
+        { id: 14, name: 'Resilience', score: 78, level: 'Proficient' },
+        { id: 15, name: 'Self-Management', score: 81, level: 'Proficient' }
+      ],
+      strengths: ['Ethics & Integrity', 'Collaboration & Teamwork', 'Building Trust'],
+      developmentAreas: ['Conflict Resolution', 'Resilience']
+    },
+    {
+      id: 'att_22cse0015_01',
+      userId: 'usr_22cse0015',
+      studentName: 'Priya Patel',
+      rollNo: '22CSE0015',
+      department: 'Computer Science & Technology',
+      assessmentId: 'asmt-2026-core',
+      assessmentName: '2026 Institutional Human-Centric Skills Assessment',
+      overallScore: 78,
+      certificationStatus: 'Certified',
+      isCertified: true,
+      timeSpentSeconds: 2310,
+      timeTakenFormatted: '38m 30s',
+      totalQuestions: 150,
+      timestamp: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
+      competencyScores: [
+        { id: 1, name: 'Communication', score: 82, level: 'Proficient' },
+        { id: 6, name: 'Collaboration & Teamwork', score: 85, level: 'Advanced' },
+        { id: 11, name: 'Ethics & Integrity', score: 80, level: 'Proficient' }
+      ],
+      strengths: ['Collaboration & Teamwork', 'Communication'],
+      developmentAreas: ['Time Management']
+    },
+    {
+      id: 'att_22cse0028_01',
+      userId: 'usr_22cse0028',
+      studentName: 'Rohan Verma',
+      rollNo: '22CSE0028',
+      department: 'Computer Science & Technology',
+      assessmentId: 'asmt-2026-core',
+      assessmentName: '2026 Institutional Human-Centric Skills Assessment',
+      overallScore: 68,
+      certificationStatus: 'Certified',
+      isCertified: true,
+      timeSpentSeconds: 2540,
+      timeTakenFormatted: '42m 20s',
+      totalQuestions: 150,
+      timestamp: new Date(Date.now() - 3600000 * 24 * 6).toISOString(),
+      competencyScores: [
+        { id: 1, name: 'Communication', score: 70, level: 'Proficient' },
+        { id: 6, name: 'Collaboration & Teamwork', score: 72, level: 'Proficient' }
+      ],
+      strengths: ['Collaboration & Teamwork'],
+      developmentAreas: ['Planning & Organizing']
+    },
+    {
+      id: 'att_22ece0041_01',
+      userId: 'usr_22ece0041',
+      studentName: 'Ananya Gupta',
+      rollNo: '22ECE0041',
+      department: 'Electronics & Communication Engineering',
+      assessmentId: 'asmt-2026-core',
+      assessmentName: '2026 Institutional Human-Centric Skills Assessment',
+      overallScore: 58,
+      certificationStatus: 'Needs Improvement',
+      isCertified: false,
+      timeSpentSeconds: 2600,
+      timeTakenFormatted: '43m 20s',
+      totalQuestions: 150,
+      timestamp: new Date(Date.now() - 3600000 * 24 * 7).toISOString(),
+      competencyScores: [
+        { id: 1, name: 'Communication', score: 62, level: 'Developing' },
+        { id: 6, name: 'Collaboration & Teamwork', score: 55, level: 'Developing' }
+      ],
+      strengths: ['Empathy'],
+      developmentAreas: ['Accountability', 'Conflict Resolution']
+    },
+    {
+      id: 'att_22me0054_01',
+      userId: 'usr_22me0054',
+      studentName: 'Kabir Mehta',
+      rollNo: '22ME0054',
+      department: 'Mechanical Engineering',
+      assessmentId: 'asmt-2026-core',
+      assessmentName: '2026 Institutional Human-Centric Skills Assessment',
+      overallScore: 88,
+      certificationStatus: 'Certified',
+      isCertified: true,
+      timeSpentSeconds: 2010,
+      timeTakenFormatted: '33m 30s',
+      totalQuestions: 150,
+      timestamp: new Date(Date.now() - 3600000 * 24 * 8).toISOString(),
+      competencyScores: [
+        { id: 1, name: 'Communication', score: 90, level: 'Advanced' },
+        { id: 11, name: 'Ethics & Integrity', score: 92, level: 'Mastery' }
+      ],
+      strengths: ['Communication', 'Ethics & Integrity'],
+      developmentAreas: ['Self-Management']
+    }
+  ];
+}
+
 export function getStoredAttempts() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ATTEMPTS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error(e);
   }
-  return [];
+  const init = getInitialAttempts();
+  try {
+    localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(init));
+  } catch (e) {}
+  return init;
+}
+
+export function saveAttempts(attempts) {
+  try {
+    localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(attempts));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/**
+ * Synchronize live attempts from server or Supabase directly
+ */
+export async function fetchLiveAttempts() {
+  try {
+    const { apiGetAllAttempts } = await import('./api.js');
+    const res = await apiGetAllAttempts();
+    if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+      const current = getStoredAttempts();
+      const existingIds = new Set(res.data.map(d => d.id));
+      const merged = [...res.data, ...current.filter(c => !existingIds.has(c.id))];
+      saveAttempts(merged);
+      return merged;
+    }
+  } catch (err) {
+    console.warn('[Storage] Notice fetching live attempts:', err);
+  }
+
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      const { data, error } = await client.from('attempts').select('*').order('created_at', { ascending: false });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const formatted = data.map(d => ({
+          id: d.id,
+          userId: d.user_id,
+          studentName: d.student_name,
+          rollNo: d.roll_no,
+          department: d.department,
+          assessmentId: d.assessment_id,
+          assessmentName: d.assessment_name,
+          overallScore: Number(d.overall_score),
+          certificationStatus: d.certification_status,
+          isCertified: Boolean(d.is_certified),
+          timeSpentSeconds: Number(d.time_spent_seconds || 0),
+          timeTakenFormatted: d.time_taken_formatted,
+          totalQuestions: Number(d.total_questions || 0),
+          answers: d.answers || {},
+          competencyScores: d.competency_scores || [],
+          strengths: d.strengths || [],
+          developmentAreas: d.development_areas || [],
+          timestamp: d.created_at
+        }));
+        saveAttempts(formatted);
+        return formatted;
+      }
+    } catch (sbErr) {
+      console.warn('Supabase attempts fetch warning:', sbErr);
+    }
+  }
+  return getStoredAttempts();
 }
 
 export async function saveAttempt(attempt) {
   const current = getStoredAttempts();
-  const updated = [attempt, ...current];
+  const updated = [attempt, ...current.filter(a => a.id !== attempt.id)];
   try {
     localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(updated));
   } catch (e) {
