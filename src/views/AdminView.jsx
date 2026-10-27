@@ -55,8 +55,14 @@ import {
   fetchLiveQuestions,
   fetchLiveAttempts,
   handleSeedData,
-  USER_ROLES 
+  USER_ROLES,
+  getStoredAuthorizedTesters,
+  saveAuthorizedTesters,
+  isStrictTestingModeEnabled,
+  setStrictTestingMode
 } from '../lib/storage';
+import * as XLSX from 'xlsx';
+import { Mail, Send, ToggleLeft, ToggleRight, UserCheck, UserX, FileDown } from 'lucide-react';
 import {
   apiGetQuestions,
   apiGetQuestionBankStats,
@@ -141,6 +147,14 @@ export default function AdminView({
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterStatusFilter, setRosterStatusFilter] = useState('all'); // 'all' | 'certified' | 'pending'
 
+  // Authorized Testers & Excel Testing Roster state
+  const [authorizedTesters, setAuthorizedTesters] = useState(() => getStoredAuthorizedTesters());
+  const [strictTestingMode, setStrictTestingModeState] = useState(() => isStrictTestingModeEnabled());
+  const [testerSearch, setTesterSearch] = useState('');
+  const [testerStatusMessage, setTesterStatusMessage] = useState('');
+  const [isSendingInvites, setIsSendingInvites] = useState(false);
+  const [inviteResultModal, setInviteResultModal] = useState(null);
+
   // Seed Data notification state
   const [seedNotification, setSeedNotification] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
@@ -170,6 +184,8 @@ export default function AdminView({
     setQuestions(getStoredQuestions());
     setAssessments(getStoredAssessments());
     setAttempts(getStoredAttempts());
+    setAuthorizedTesters(getStoredAuthorizedTesters());
+    setStrictTestingModeState(isStrictTestingModeEnabled());
   }, [activeTab]);
 
   // Question moderation actions with backend API synchronization
@@ -514,6 +530,209 @@ export default function AdminView({
     document.body.removeChild(link);
   };
 
+  // -------------------------------------------------------------
+  // Excel Testing Roster Handlers
+  // -------------------------------------------------------------
+  const handleDownloadSampleExcel = () => {
+    const sampleData = [
+      {
+        'Email Address': 'student.test1@mru.edu.in',
+        'Full Name': 'Aarav Sharma',
+        'Roll Number': '22CS0101',
+        'Department': 'Computer Science & Technology',
+        'Role': 'student'
+      },
+      {
+        'Email Address': 'student.test2@mru.edu.in',
+        'Full Name': 'Priya Verma',
+        'Roll Number': '22CS0145',
+        'Department': 'Computer Science & Technology',
+        'Role': 'student'
+      },
+      {
+        'Email Address': 'faculty.mentor@mru.edu.in',
+        'Full Name': 'Dr. Rajesh Khanna',
+        'Roll Number': 'FAC089',
+        'Department': 'Computer Science & Technology',
+        'Role': 'faculty'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Authorized Testers');
+    XLSX.writeFile(workbook, 'ICCF_Authorized_Testers_Template.xlsx');
+  };
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawJson = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rawJson || rawJson.length === 0) {
+          alert('The uploaded spreadsheet contains no data rows.');
+          return;
+        }
+
+        const parsedTesters = [];
+        const seenEmails = new Set();
+
+        rawJson.forEach((row) => {
+          // Robust column extraction with alias support
+          const emailRaw = row['Email Address'] || row['Email'] || row['email'] || row['EMAIL'] || row['Mail'] || '';
+          const email = String(emailRaw).trim().toLowerCase();
+          if (!email || !email.includes('@') || seenEmails.has(email)) return;
+          seenEmails.add(email);
+
+          const name = row['Full Name'] || row['Name'] || row['name'] || row['Student Name'] || email.split('@')[0];
+          const rollNo = row['Roll Number'] || row['Roll No'] || row['rollNo'] || row['Roll'] || '';
+          const department = row['Department'] || row['department'] || row['Dept'] || 'Computer Science & Technology';
+          const role = String(row['Role'] || row['role'] || 'student').trim().toLowerCase();
+
+          parsedTesters.push({
+            id: `usr_${email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`,
+            email,
+            name: String(name).trim(),
+            rollNo: String(rollNo).trim(),
+            department: String(department).trim(),
+            role: role === 'faculty' ? 'faculty' : (role === 'admin' ? 'core_team' : 'student'),
+            addedAt: new Date().toISOString()
+          });
+        });
+
+        if (parsedTesters.length === 0) {
+          alert('No valid student/tester email addresses could be detected. Please verify your column headers.');
+          return;
+        }
+
+        // Merge with existing authorized testers without duplicates
+        const existing = getStoredAuthorizedTesters();
+        const mergedMap = new Map();
+        existing.forEach(t => mergedMap.set(t.email.toLowerCase(), t));
+        parsedTesters.forEach(t => mergedMap.set(t.email.toLowerCase(), t));
+        const mergedList = Array.from(mergedMap.values());
+
+        saveAuthorizedTesters(mergedList);
+        setAuthorizedTesters(mergedList);
+
+        // Also call backend bulk provision API
+        fetch('/api/auth/testers/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          },
+          body: JSON.stringify({ testers: parsedTesters })
+        }).catch(err => console.warn('[Bulk provision API notice]', err));
+
+        setTesterStatusMessage(`Successfully loaded and authorized ${parsedTesters.length} testers from ${file.name}!`);
+        setTimeout(() => setTesterStatusMessage(''), 8000);
+      } catch (err) {
+        console.error('Error parsing Excel sheet:', err);
+        alert('Failed to parse Excel file. Please ensure it is a valid .xlsx, .xls, or .csv document.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
+  const handleToggleStrictMode = () => {
+    const nextVal = !strictTestingMode;
+    setStrictTestingModeState(nextVal);
+    setStrictTestingMode(nextVal);
+  };
+
+  const handleDeleteTester = (emailToDelete) => {
+    if (window.confirm(`Revoke portal access for ${emailToDelete}?`)) {
+      const updated = authorizedTesters.filter(t => t.email.toLowerCase() !== emailToDelete.toLowerCase());
+      saveAuthorizedTesters(updated);
+      setAuthorizedTesters(updated);
+    }
+  };
+
+  const handleClearAllTesters = () => {
+    if (window.confirm('Are you sure you want to clear the entire testing roster? Only admins will be able to log in under Strict Mode.')) {
+      saveAuthorizedTesters([]);
+      setAuthorizedTesters([]);
+    }
+  };
+
+  const handleSendAllInvites = async () => {
+    if (authorizedTesters.length === 0) {
+      alert('No authorized testers found. Please upload an Excel sheet first.');
+      return;
+    }
+
+    setIsSendingInvites(true);
+    const portalUrl = window.location.origin;
+
+    try {
+      const token = localStorage.getItem('token') || '';
+      const resp = await fetch('/api/auth/testers/send-invites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          testers: authorizedTesters,
+          portalUrl
+        })
+      });
+
+      const resData = await resp.json().catch(() => ({}));
+      setIsSendingInvites(false);
+
+      // Generate mailto link for direct batch client dispatch
+      const bccEmails = authorizedTesters.map(t => t.email).join(',');
+      const emailSubject = encodeURIComponent("🎓 You're invited to the Manav Rachna ICCF Competency Assessment");
+      const emailBody = encodeURIComponent(
+        `Dear Participant,\n\nYou have been officially registered and authorized for the Manav Rachna ICCF Competency Assessment beta.\n\n` +
+        `Access the portal here:\n${portalUrl}\n\n` +
+        `Sign in using your authorized email address (via OTP verification or "Continue with Google").\n\n` +
+        `Best regards,\nInstitutional Competency Certification Framework (ICCF)\nManav Rachna Educational Institutions`
+      );
+      const mailtoLink = `mailto:?bcc=${encodeURIComponent(bccEmails)}&subject=${emailSubject}&body=${emailBody}`;
+
+      setInviteResultModal({
+        count: authorizedTesters.length,
+        dispatchedCount: resData.dispatchedCount || authorizedTesters.length,
+        mailtoLink
+      });
+    } catch (err) {
+      setIsSendingInvites(false);
+      console.error('[Send Invites Error]', err);
+      // Fallback modal with mailto
+      const bccEmails = authorizedTesters.map(t => t.email).join(',');
+      const emailSubject = encodeURIComponent("🎓 You're invited to the Manav Rachna ICCF Competency Assessment");
+      const emailBody = encodeURIComponent(
+        `Dear Participant,\n\nYou have been authorized for the Manav Rachna ICCF Beta.\n\nPortal: ${portalUrl}\n\nBest regards,\nManav Rachna ICCF`
+      );
+      setInviteResultModal({
+        count: authorizedTesters.length,
+        dispatchedCount: 0,
+        mailtoLink: `mailto:?bcc=${encodeURIComponent(bccEmails)}&subject=${emailSubject}&body=${emailBody}`
+      });
+    }
+  };
+
+  const filteredTesters = authorizedTesters.filter(t => {
+    if (!testerSearch.trim()) return true;
+    const q = testerSearch.toLowerCase();
+    return (t.email || '').toLowerCase().includes(q) ||
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.rollNo || '').toLowerCase().includes(q) ||
+      (t.department || '').toLowerCase().includes(q);
+  });
+
   // Filtered questions for moderation and Question Bank Management
   const filteredQuestions = questions.filter((q) => {
     const matchesStatus = statusFilter === 'all' || q.approvalStatus === statusFilter;
@@ -755,7 +974,8 @@ export default function AdminView({
             { id: 'overview', label: 'Overview & Benchmarks', icon: BarChart3, adminOnly: false },
             { id: 'moderation', label: isAdmin ? `Question Bank Management (${questions.length})` : `Question Moderation & Submissions (${questions.length})`, icon: FileCheck, adminOnly: false },
             { id: 'assessments', label: `Assessment Configurations (${assessments.length})`, icon: Sliders, adminOnly: true },
-            { id: 'roster', label: `Student Roster & Attempts (${attempts.length})`, icon: Users, adminOnly: false }
+            { id: 'roster', label: `Student Roster & Attempts (${attempts.length})`, icon: Users, adminOnly: false },
+            { id: 'testers', label: `Testing Access & Excel Roster (${authorizedTesters.length})`, icon: FileSpreadsheet, adminOnly: true }
           ].filter(tab => !tab.adminOnly || isAdmin).map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -2695,7 +2915,389 @@ export default function AdminView({
           </div>
         )}
 
+        {/* ============================================================== */}
+        {/* TAB 5: Testing Access & Excel Roster                           */}
+        {/* ============================================================== */}
+        {activeTab === 'testers' && (
+          <div className="animate-fade-in">
+            {/* Status Message */}
+            {testerStatusMessage && (
+              <div style={{
+                padding: '12px 18px',
+                borderRadius: '12px',
+                backgroundColor: '#DCFCE7',
+                border: '1px solid #86EFAC',
+                color: '#15803D',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <CheckCircle2 size={18} />
+                <span>{testerStatusMessage}</span>
+              </div>
+            )}
+
+            {/* Top Control Header */}
+            <div className="mr-card" style={{ padding: '24px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '18px' }}>
+                <div style={{ maxWidth: '640px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: strictTestingMode ? '#FEF2F2' : '#F3F4F6',
+                      color: strictTestingMode ? '#DC2626' : '#4B5563',
+                      fontSize: '0.74rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      {strictTestingMode ? '🔒 Strict Testing Mode Active' : '🔓 Open Institutional Mode'}
+                    </span>
+                    <span style={{ fontSize: '0.78rem', color: '#78716C' }}>
+                      Primary Admin: <strong>vineetkumar182023@gmail.com</strong>
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1C1917', margin: '0 0 6px 0' }}>
+                    Authorized Beta Testers & Access Control
+                  </h2>
+                  <p style={{ color: '#57534E', fontSize: '0.86rem', lineHeight: 1.5, margin: 0 }}>
+                    Upload an Excel spreadsheet (<strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong>) containing authorized student and faculty email addresses. When <strong>Strict Testing Mode</strong> is ON, <em>only</em> emails present in this roster can log in via OTP or Google Workspace.
+                  </p>
+                </div>
+
+                {/* Mode Toggle Button */}
+                <div style={{
+                  padding: '16px 20px',
+                  borderRadius: '14px',
+                  backgroundColor: '#FAF8F5',
+                  border: '1px solid #ECE7DF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#1C1917' }}>
+                      Strict Testing Mode
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#78716C' }}>
+                      {strictTestingMode ? 'Only roster emails can sign in' : 'Permits all institutional users'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleStrictMode}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      color: strictTestingMode ? '#8B1528' : '#9CA3AF',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={strictTestingMode ? 'Disable Strict Mode' : 'Enable Strict Mode'}
+                  >
+                    {strictTestingMode ? <ToggleRight size={38} /> : <ToggleLeft size={38} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Toolbar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginTop: '22px',
+                paddingTop: '18px',
+                borderTop: '1px solid #F3F4F6',
+                flexWrap: 'wrap'
+              }}>
+                {/* Upload Excel Button */}
+                <label style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  backgroundColor: '#8B1528',
+                  color: '#FFFFFF',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(139, 21, 40, 0.25)',
+                  transition: 'background-color 0.2s'
+                }}>
+                  <Upload size={16} />
+                  <span>Upload Excel Sheet (.xlsx / .csv)</span>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleExcelUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {/* Download Sample Template */}
+                <button
+                  onClick={handleDownloadSampleExcel}
+                  className="btn-secondary"
+                  style={{ padding: '10px 16px', fontSize: '0.84rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <FileDown size={16} />
+                  <span>Download Sample Excel Template</span>
+                </button>
+
+                {/* Send Email Invites */}
+                <button
+                  onClick={handleSendAllInvites}
+                  disabled={isSendingInvites || authorizedTesters.length === 0}
+                  className="btn-primary"
+                  style={{
+                    padding: '10px 18px',
+                    fontSize: '0.84rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: '#1E40AF',
+                    borderColor: '#1E40AF',
+                    opacity: (isSendingInvites || authorizedTesters.length === 0) ? 0.6 : 1
+                  }}
+                >
+                  <Mail size={16} />
+                  <span>{isSendingInvites ? 'Sending Invites...' : `Send Invitation Emails (${authorizedTesters.length})`}</span>
+                </button>
+
+                {authorizedTesters.length > 0 && (
+                  <button
+                    onClick={handleClearAllTesters}
+                    className="btn-secondary"
+                    style={{
+                      padding: '10px 14px',
+                      fontSize: '0.82rem',
+                      color: '#DC2626',
+                      borderColor: '#FCA5A5',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    <span>Clear Roster</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Testers Roster Table */}
+            <div className="mr-card" style={{ padding: '20px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserCheck size={18} color="#8B1528" />
+                  <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1C1917' }}>
+                    Authorized Participants ({filteredTesters.length} of {authorizedTesters.length})
+                  </span>
+                </div>
+
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={15} style={{ position: 'absolute', left: '10px', top: '10px', color: '#9CA3AF' }} />
+                  <input
+                    type="text"
+                    placeholder="Search by email, name, roll no..."
+                    value={testerSearch}
+                    onChange={(e) => setTesterSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px 7px 32px',
+                      borderRadius: '8px',
+                      border: '1px solid #D6D3D1',
+                      fontSize: '0.82rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {authorizedTesters.length === 0 ? (
+                <div style={{
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  backgroundColor: '#FAF8F5',
+                  borderRadius: '12px',
+                  border: '2px dashed #E5E7EB'
+                }}>
+                  <FileSpreadsheet size={42} color="#9CA3AF" style={{ margin: '0 auto 12px auto' }} />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1C1917', marginBottom: '6px' }}>
+                    No Testing Roster Uploaded Yet
+                  </h3>
+                  <p style={{ color: '#78716C', fontSize: '0.84rem', maxWidth: '440px', margin: '0 auto 16px auto' }}>
+                    Click <strong>"Download Sample Excel Template"</strong> to view the format, fill in your cohort's details, and upload the file to authorize testing access.
+                  </p>
+                  <button
+                    onClick={handleDownloadSampleExcel}
+                    className="btn-secondary"
+                    style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+                  >
+                    <Download size={14} />
+                    <span>Download Excel Template</span>
+                  </button>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#FAF8F5', borderBottom: '2px solid #EAE7E0', textAlign: 'left' }}>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>#</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Email Address</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Full Name</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Roll / ID</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Department</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Role</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTesters.map((t, idx) => (
+                        <tr key={t.email} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.15s' }}>
+                          <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: '0.78rem' }}>{idx + 1}</td>
+                          <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1C1917' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{t.email}</span>
+                              {t.email.toLowerCase() === 'vineetkumar182023@gmail.com' && (
+                                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: '0.68rem', fontWeight: 800 }}>
+                                  PRIMARY ADMIN
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 14px', color: '#374151' }}>{t.name || '—'}</td>
+                          <td style={{ padding: '10px 14px', color: '#6B7280', fontFamily: 'monospace' }}>{t.rollNo || '—'}</td>
+                          <td style={{ padding: '10px 14px', color: '#4B5563' }}>{t.department || 'Computer Science & Technology'}</td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              backgroundColor: t.role === 'faculty' ? '#EFF6FF' : '#F3F4F6',
+                              color: t.role === 'faculty' ? '#1E40AF' : '#4B5563'
+                            }}>
+                              {t.role || 'student'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => handleDeleteTester(t.email)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: '#FEE2E2',
+                                border: '1px solid #FCA5A5',
+                                color: '#DC2626',
+                                cursor: 'pointer'
+                              }}
+                              title={`Revoke access for ${t.email}`}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Email Dispatch Result Modal */}
+            {inviteResultModal && (
+              <div style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: '20px'
+              }}>
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  width: '100%',
+                  maxWidth: '520px',
+                  padding: '28px',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      backgroundColor: '#DCFCE7',
+                      color: '#15803D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Mail size={22} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
+                        Testing Invitations Ready
+                      </h3>
+                      <p style={{ fontSize: '0.8rem', color: '#78716C', margin: 0 }}>
+                        {inviteResultModal.count} authorized testers queued
+                      </p>
+                    </div>
+                  </div>
+
+                  <p style={{ color: '#57534E', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: '20px' }}>
+                    Invitation emails have been prepared for all authorized testers. If live SMTP or Resend API key is configured on the backend, invitations are dispatched immediately. You can also open your default desktop email client with all testers pre-filled in <strong>BCC</strong> for instant 1-click delivery.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <a
+                      href={inviteResultModal.mailtoLink}
+                      className="btn-primary"
+                      style={{
+                        padding: '12px 20px',
+                        fontSize: '0.88rem',
+                        textAlign: 'center',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <Send size={16} />
+                      <span>Open Email Client (Pre-filled BCC Batch)</span>
+                    </a>
+
+                    <button
+                      onClick={() => setInviteResultModal(null)}
+                      className="btn-secondary"
+                      style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+                    >
+                      Close Window
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
+

@@ -194,3 +194,84 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
     provider: 'Simulated' 
   };
 }
+
+interface SendInviteOptions {
+  toEmail: string;
+  name?: string;
+  portalUrl?: string;
+  role?: string;
+}
+
+export async function sendInviteEmail({ toEmail, name = 'Student', portalUrl = 'https://iccf.manavrachna.edu.in', role = 'student' }: SendInviteOptions): Promise<{ success: boolean; message: string }> {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const senderEmail = process.env.EMAIL_FROM || smtpUser || 'onboarding@resend.dev';
+  const senderName = process.env.EMAIL_FROM_NAME || 'Manav Rachna ICCF Portal';
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><title>Invitation to ICCF Competency Assessment</title></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF7F2; margin: 0; padding: 24px;">
+      <div style="max-width: 540px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #ECE7DF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(139, 21, 40, 0.08);">
+        <div style="background: linear-gradient(135deg, #8B1528 0%, #5E0D1B 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
+          <h1 style="margin: 0; font-size: 1.45rem; font-weight: 800;">Manav Rachna University</h1>
+          <p style="margin: 6px 0 0; opacity: 0.9; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">
+            Institutional Competency Certification Framework (ICCF)
+          </p>
+        </div>
+        <div style="padding: 36px 32px; background-color: #FFFFFF;">
+          <p style="font-size: 1.05rem; color: #1C1917; margin-top: 0;">Dear <strong>${name}</strong>,</p>
+          <p style="color: #57534E; font-size: 0.92rem; line-height: 1.6;">
+            You have been officially invited and authorized as a participant in the <strong>Manav Rachna ICCF Human-Centric Skills Assessment Beta</strong>.
+          </p>
+          <div style="background-color: #FAF8F5; border: 1px solid #E7E5E4; border-radius: 14px; padding: 18px 20px; margin: 24px 0;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: #1C1917; margin-bottom: 8px;">Your Portal Access Details:</div>
+            <div style="font-size: 0.82rem; color: #57534E; line-height: 1.6;">
+              • <strong>Registered Email:</strong> ${toEmail}<br>
+              • <strong>Portal Role:</strong> ${role.toUpperCase()}<br>
+              • <strong>Access Method:</strong> Sign in with email OTP or click "Continue with Google"
+            </div>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${portalUrl}" style="background-color: #8B1528; color: #FFFFFF; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.95rem; display: inline-block;">
+              Access ICCF Assessment Portal →
+            </a>
+          </div>
+          <p style="color: #78716C; font-size: 0.8rem; line-height: 1.5;">
+            Upon logging in, you will be able to take the diagnostic assessment, evaluate your 15 core competency dimensions, and receive your verified institutional credential.
+          </p>
+        </div>
+        <div style="background-color: #FAF7F2; padding: 18px 24px; text-align: center; font-size: 0.74rem; color: #A8A29E; border-top: 1px solid #ECE7DF;">
+          Manav Rachna Educational Institutions • Sector 43, Aravalli Hills, Faridabad, Haryana
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  if (smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpPort === 465, auth: { user: smtpUser, pass: smtpPass } });
+      await transporter.sendMail({ from: `"${senderName}" <${smtpUser}>`, to: toEmail, subject: `🎓 You're invited to the Manav Rachna ICCF Competency Assessment`, html: htmlContent });
+      return { success: true, message: `Invite delivered to ${toEmail}` };
+    } catch (e: any) { console.warn('[SMTP Invite Error]', e.message); }
+  }
+
+  if (resendApiKey) {
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: `${senderName} <${senderEmail}>`, to: [toEmail], subject: `🎓 You're invited to the Manav Rachna ICCF Competency Assessment`, html: htmlContent })
+      });
+      if (resp.ok) return { success: true, message: `Invite delivered via Resend to ${toEmail}` };
+    } catch (e: any) { console.warn('[Resend Invite Error]', e.message); }
+  }
+
+  console.log(`[INVITE EMAIL DISPATCH] For ${toEmail} (${name}) -> Link: ${portalUrl}`);
+  return { success: true, message: `Invite simulated for ${toEmail}` };
+}

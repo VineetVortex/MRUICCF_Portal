@@ -779,6 +779,98 @@ export async function provisionUser(req: AuthenticatedRequest, res: Response): P
 }
 
 /**
+ * POST /api/auth/testers/bulk
+ * Bulk registers authorized testers from an uploaded roster
+ */
+export async function bulkProvisionTesters(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const { testers } = req.body;
+  if (!Array.isArray(testers) || testers.length === 0) {
+    res.status(400).json({ success: false, error: 'Expected an array of testers.' });
+    return;
+  }
+
+  const db = getDb();
+  let createdCount = 0;
+  const errors: string[] = [];
+
+  for (const t of testers) {
+    const email = String(t.email || '').trim().toLowerCase();
+    if (!email) continue;
+    const name = String(t.name || email.split('@')[0] || 'Student').trim();
+    const role = (t.role || 'student').toLowerCase();
+    const department = t.department || 'Computer Science & Engineering';
+    const rollNo = t.rollNo || null;
+
+    try {
+      await db.from('users').upsert({
+        id: crypto.randomUUID(),
+        email,
+        name,
+        role,
+        department,
+        roll_no: rollNo,
+        is_active: true,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'email' });
+      createdCount++;
+    } catch (e: any) {
+      errors.push(`Failed for ${email}: ${e.message}`);
+    }
+  }
+
+  logAuditEvent(
+    'ADMIN_ACTION_LOG',
+    `Admin ${req.user?.name || 'Admin'} provisioned ${createdCount} authorized testers from roster`,
+    req.user?.id || 'admin',
+    { createdCount, errorsCount: errors.length }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: `Successfully provisioned ${createdCount} testers.`,
+    count: createdCount,
+    errors: errors.length > 0 ? errors : undefined
+  });
+}
+
+/**
+ * POST /api/auth/testers/send-invites
+ * Sends invitation emails to authorized testers
+ */
+export async function sendTestingInvitations(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const { testers, portalUrl } = req.body;
+  if (!Array.isArray(testers) || testers.length === 0) {
+    res.status(400).json({ success: false, error: 'Expected an array of testers.' });
+    return;
+  }
+
+  const { sendInviteEmail } = await import('../services/emailService.js');
+  let dispatchedCount = 0;
+
+  for (const t of testers) {
+    const email = String(t.email || '').trim().toLowerCase();
+    if (!email) continue;
+    try {
+      await sendInviteEmail({
+        toEmail: email,
+        name: t.name || 'Participant',
+        portalUrl: portalUrl || 'https://iccf.manavrachna.edu.in',
+        role: t.role || 'student'
+      });
+      dispatchedCount++;
+    } catch (e: any) {
+      console.warn(`[SendInvites] Error emailing ${email}:`, e.message);
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Dispatched testing invitation emails to ${dispatchedCount} testers.`,
+    dispatchedCount
+  });
+}
+
+/**
  * GET /api/auth/users
  */
 export async function listUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -798,3 +890,4 @@ export async function listUsers(req: AuthenticatedRequest, res: Response): Promi
 
 // Backward-compatible alias
 export const loginOrRegister = login;
+

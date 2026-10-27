@@ -25,6 +25,8 @@ const STORAGE_KEY_QUESTIONS = 'mr_iccf_questions_v1';
 const STORAGE_KEY_ASSESSMENTS = 'mr_iccf_assessments_v1';
 const STORAGE_KEY_ATTEMPTS = 'mr_iccf_attempts_v1';
 const STORAGE_KEY_USER = 'mr_iccf_current_user_v1';
+const STORAGE_KEY_AUTHORIZED_TESTERS = 'mr_iccf_authorized_testers_v1';
+const STORAGE_KEY_STRICT_TESTING_MODE = 'mr_iccf_strict_testing_mode_v1';
 
 // Bootstrap admin email specified for platform administration (assigns core_team automatically)
 export const BOOTSTRAP_ADMIN_EMAIL = 'iccf@mruadmin.edu.in';
@@ -36,6 +38,86 @@ export const USER_ROLES = {
   CORE_TEAM: 'core_team',
   SYSTEM_ADMIN: 'system_admin'
 };
+
+/**
+ * Retrieves the list of authorized beta testers from the Admin's uploaded Excel sheet
+ */
+export function getStoredAuthorizedTesters() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_AUTHORIZED_TESTERS);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error(e);
+  }
+  return [];
+}
+
+/**
+ * Saves and synchronizes authorized testers locally and to Supabase public.users
+ */
+export function saveAuthorizedTesters(testers) {
+  try {
+    localStorage.setItem(STORAGE_KEY_AUTHORIZED_TESTERS, JSON.stringify(testers));
+  } catch (e) {
+    console.error(e);
+  }
+  const client = getSupabaseClient();
+  if (client && Array.isArray(testers) && testers.length > 0) {
+    const upsertRows = testers.map(t => ({
+      id: t.id || `usr_${(t.email || '').split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      email: t.email.trim().toLowerCase(),
+      name: t.name || 'Beta Tester',
+      role: t.role || 'student',
+      department: t.department || 'Computer Science & Technology',
+      dept_code: t.deptCode || 'CST',
+      roll_no: t.rollNo || (t.email.split('@')[0] || '').toUpperCase(),
+      year: t.year || 'Testing Cohort',
+      is_active: true,
+      last_login_at: new Date().toISOString()
+    }));
+    client.from('users').upsert(upsertRows, { onConflict: 'email' }).then(({ error }) => {
+      if (!error) {
+        console.log(`[Supabase] Committed ${testers.length} authorized testers to public.users`);
+      } else {
+        console.warn('[Supabase] Tester roster sync notice:', error.message);
+      }
+    }).catch(err => console.warn('[Supabase] Sync notice:', err));
+  }
+}
+
+/**
+ * Checks whether an email is permitted to log in under Strict Testing Mode
+ */
+export function isTesterAuthorized(email) {
+  const clean = (email || '').trim().toLowerCase();
+  if (clean === 'vineetkumar182023@gmail.com' || clean === 'iccf@mruadmin.edu.in') {
+    return true;
+  }
+  const isStrict = isStrictTestingModeEnabled();
+  if (!isStrict) return true;
+
+  const testers = getStoredAuthorizedTesters();
+  if (testers.length === 0) return true; // If no roster uploaded yet, permit institutional access
+  return testers.some(t => (t.email || '').trim().toLowerCase() === clean);
+}
+
+export function isStrictTestingModeEnabled() {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_STRICT_TESTING_MODE);
+    if (val === null) return true;
+    return val === 'true';
+  } catch (e) {
+    return true;
+  }
+}
+
+export function setStrictTestingMode(enabled) {
+  try {
+    localStorage.setItem(STORAGE_KEY_STRICT_TESTING_MODE, String(enabled));
+  } catch (e) {
+    console.error(e);
+  }
+}
 
 // No pre-seeded users — real users are created on first login via Google OAuth / email auth
 

@@ -21,7 +21,7 @@ import {
   ExternalLink,
   X
 } from 'lucide-react';
-import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser } from '../lib/storage';
+import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized } from '../lib/storage';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { 
   resolveClientIdentity, 
@@ -285,6 +285,12 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       return;
     }
 
+    // Testing Mode Access Gating: Only emails in the authorized tester roster (or admin) can access
+    if (!isTesterAuthorized(cleanEmail)) {
+      setError(`Access Restricted: Testing mode is active. "${cleanEmail}" is not listed in the authorized tester roster. Please contact the administrator.`);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -423,6 +429,13 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
   const executeGoogleSignIn = async (userEmail, userName) => {
     setIsGoogleLoading(true);
     setGoogleModalError('');
+
+    const clean = (userEmail || '').trim().toLowerCase();
+    if (!isTesterAuthorized(clean)) {
+      setGoogleModalError(`Access Restricted: Testing mode is active. "${clean}" is not in the authorized testing roster.`);
+      setIsGoogleLoading(false);
+      return;
+    }
 
     try {
       const res = await apiLoginUser({ email: userEmail, isGoogleSso: true, name: userName });
@@ -899,7 +912,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               {/* Google Workspace One-Click SSO */}
               <button
                 type="button"
-                onClick={handleDirectSupabaseGoogleOAuth}
+                onClick={handleGoogleSignIn}
                 disabled={isLoading || isGoogleLoading}
                 style={{
                   width: '100%',
