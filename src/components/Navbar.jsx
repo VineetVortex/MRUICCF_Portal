@@ -42,9 +42,10 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
         { id: 'faculty', label: 'Faculty & HoD Portal' }
       ];
     }
-    // CORE_TEAM and SYSTEM_ADMIN
+    // CORE_TEAM and SYSTEM_ADMIN - can switch between Admin and Faculty views
     return [
-      { id: 'admin', label: 'Admin Management & Governance' }
+      { id: 'admin', label: 'Admin Governance' },
+      { id: 'faculty', label: 'Faculty Console' }
     ];
   };
 

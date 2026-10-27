@@ -18,8 +18,9 @@ export function resolveClientIdentity(email, rawName = '') {
   const cleanEmail = (email || '').trim().toLowerCase();
   const prefix = cleanEmail.split('@')[0] || 'user';
 
-  // 1. Leadership & System Admin Whitelist
+  // 1. Leadership, Admin & Faculty Whitelist
   if (
+    cleanEmail === 'vineetkumar182023@gmail.com' ||
     cleanEmail === 'iccf@mruadmin.edu.in' ||
     cleanEmail === BOOTSTRAP_ADMIN_EMAIL.toLowerCase().trim() ||
     cleanEmail.startsWith('vc@') ||
@@ -27,17 +28,18 @@ export function resolveClientIdentity(email, rawName = '') {
     cleanEmail.includes('director.academics')
   ) {
     const isVc = cleanEmail.startsWith('vc@');
+    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com';
     return {
-      id: `usr_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
-      uid: `usr_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      id: `usr_admin_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      uid: `usr_admin_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
       email: cleanEmail,
-      name: rawName || (cleanEmail === 'iccf@mruadmin.edu.in' ? 'ICCF Institutional Administrator' : isVc ? 'Vice Chancellor' : 'Central Administration Director'),
+      name: rawName || (isVineet ? 'Vineet Kumar' : cleanEmail === 'iccf@mruadmin.edu.in' ? 'ICCF Institutional Administrator' : isVc ? 'Vice Chancellor' : 'Central Administration Director'),
       role: USER_ROLES.CORE_TEAM,
-      department: 'Central Administration & Institutional Governance',
-      deptCode: 'ADMIN',
-      designation: isVc ? 'Vice Chancellor' : 'Institutional Admin / Core Team',
+      department: 'Computer Science & Technology',
+      deptCode: 'CST',
+      designation: isVineet ? 'Institutional Admin & Faculty Lead' : isVc ? 'Vice Chancellor' : 'Institutional Admin / Core Team',
       rollNo: 'ADM-001',
-      year: 'Faculty & Leadership',
+      year: 'Faculty & Administration',
       lastLoginAt: new Date().toISOString()
     };
   }

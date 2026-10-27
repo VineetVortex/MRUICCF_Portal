@@ -120,8 +120,9 @@ function getRefreshCookieOptions() {
 async function resolveExistingUser(email: string): Promise<User | null> {
   const cleanEmail = email.trim().toLowerCase();
 
-  // 1. Check Super Admin / Leadership
+  // 1. Check Super Admin / Leadership / Primary Admin & Faculty
   if (
+    cleanEmail === 'vineetkumar182023@gmail.com' ||
     cleanEmail === 'iccf@mruadmin.edu.in' ||
     cleanEmail === config.bootstrapAdminEmail.toLowerCase().trim() ||
     cleanEmail === 'admin.iccf@mru.edu.in' ||
@@ -129,18 +130,19 @@ async function resolveExistingUser(email: string): Promise<User | null> {
     cleanEmail.startsWith('registrar@') ||
     cleanEmail.includes('director.academics')
   ) {
-    const uid = `usr_admin_${cleanEmail.split('@')[0]}`;
+    const uid = `usr_admin_${cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`;
+    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com';
     return {
       id: uid,
       uid: uid,
       email: cleanEmail,
       role: 'core_team',
-      name: cleanEmail === 'iccf@mruadmin.edu.in' ? 'ICCF Institutional Administrator' : 'Central Administration Director',
-      department: 'Central Administration & Institutional Governance',
-      deptCode: 'ADMIN',
-      designation: cleanEmail.startsWith('vc@') ? 'Vice Chancellor' : 'Institutional Admin / Core Team',
+      name: isVineet ? 'Vineet Kumar' : (cleanEmail === 'iccf@mruadmin.edu.in' ? 'ICCF Institutional Administrator' : 'Central Administration Director'),
+      department: 'Computer Science & Technology',
+      deptCode: 'CST',
+      designation: isVineet ? 'Institutional Admin & Faculty Lead' : (cleanEmail.startsWith('vc@') ? 'Vice Chancellor' : 'Institutional Admin / Core Team'),
       rollNo: 'ADM-001',
-      year: 'Faculty & Leadership',
+      year: 'Faculty & Administration',
     };
   }
 

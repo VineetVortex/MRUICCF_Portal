@@ -614,11 +614,24 @@ export default function FacultyView({ setView, currentUser, onLogout }) {
             }}>
               <div>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#8B1528', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Faculty Academic Console
+                  {currentUser?.role === 'core_team' || currentUser?.role === 'system_admin' ? 'Institutional Governance & Faculty Portal' : 'Faculty Academic Console'}
                 </span>
-                <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1C1917', marginTop: '2px' }}>
+                <h2 style={{ fontSize: '1.55rem', fontWeight: 800, color: '#1C1917', marginTop: '2px', marginBottom: '6px' }}>
                   Welcome back, {profile?.name || currentUser?.name || 'Professor'}
                 </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px', marginBottom: '8px' }}>
+                  <span style={{ padding: '3px 10px', borderRadius: '6px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontSize: '0.78rem', fontWeight: 700, border: '1px solid #BFDBFE' }}>
+                    {currentUser?.designation || profile?.designation || (isDeptHead ? 'Head of Department' : 'Faculty Member')}
+                  </span>
+                  <span style={{ padding: '3px 10px', borderRadius: '6px', backgroundColor: '#FDF2F4', color: '#8B1528', fontSize: '0.78rem', fontWeight: 700, border: '1px solid #FECDD3' }}>
+                    Dept: {currentUser?.department || profile?.department || 'Computer Science & Technology'}
+                  </span>
+                  {currentUser?.deptCode && (
+                    <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '0.76rem', fontWeight: 600 }}>
+                      Code: {currentUser.deptCode}
+                    </span>
+                  )}
+                </div>
                 <p style={{ fontSize: '0.88rem', color: '#78716C', maxWidth: '640px', marginTop: '4px', lineHeight: 1.4 }}>
                   Manage departmental assessment drafts, inspect assigned student cohorts across the 15 calibrated competency dimensions, and review faculty peer contributions.
                 </p>

@@ -137,15 +137,72 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
               <GIcon size={26} color="#FDE68A" />
             </div>
             <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>
-                {greeting.text} • {fmt(liveTime)}
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#FDE68A', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{greeting.text}</span>
+                <span>•</span>
+                <span>{fmt(liveTime)}</span>
               </div>
-              <h1 style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.2, fontFamily: 'var(--font-sans)' }}>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.2, fontFamily: 'var(--font-sans)', margin: 0 }}>
                 {currentUser?.name || 'Student'}
               </h1>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
-                {currentUser?.department || 'Manav Rachna'} • {currentUser?.year || currentUser?.designation || 'Undergraduate'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {currentUser?.rollNo && (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.18)',
+                    backdropFilter: 'blur(8px)',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em'
+                  }}>
+                    <span>Roll No: {currentUser.rollNo}</span>
+                  </div>
+                )}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(8px)',
+                  fontSize: '0.78rem',
+                  fontWeight: 700
+                }}>
+                  <span>Branch: {currentUser?.deptCode || 'CST'}</span>
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(8px)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600
+                }}>
+                  <span>Department: {currentUser?.department || 'Computer Science & Technology'}</span>
+                </div>
+                {(currentUser?.year || currentUser?.designation) && (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    fontSize: '0.76rem',
+                    color: '#FEF3C7'
+                  }}>
+                    <span>{currentUser?.year || currentUser?.designation}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

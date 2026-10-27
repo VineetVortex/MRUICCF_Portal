@@ -147,7 +147,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
 
   // Google Workspace SSO State
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('Vineetkumar182023@gmail.com');
   const [googleModalError, setGoogleModalError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -243,6 +243,14 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     const clean = email.trim().toLowerCase();
     if (!clean) return null;
 
+    if (clean === 'vineetkumar182023@gmail.com') {
+      return {
+        type: 'admin',
+        badge: '🛡️ Institutional Admin & Faculty Lead',
+        desc: 'Central Administration & Academic Lead (Full Access)'
+      };
+    }
+
     if (clean.endsWith('@gmail.com') || clean.endsWith('@yahoo.com') || clean.endsWith('@outlook.com')) {
       return {
         type: 'warning',
@@ -299,6 +307,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
 
     const cleanEmail = email.trim().toLowerCase();
     if (
+      cleanEmail !== 'vineetkumar182023@gmail.com' &&
       !cleanEmail.endsWith('@mru.ac.in') &&
       !cleanEmail.endsWith('.mru.ac.in') &&
       !cleanEmail.endsWith('@mru.edu.in') && 
@@ -493,15 +502,17 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
           }
         });
         if (oauthError) {
-          setGoogleModalError(oauthError.message || 'Google OAuth provider is not active in Supabase Dashboard.');
+          console.warn('[Supabase Google OAuth notice]:', oauthError.message);
+          setShowGoogleModal(true);
           setIsGoogleLoading(false);
         }
       } else {
-        setGoogleModalError('Supabase credentials not configured.');
+        setShowGoogleModal(true);
         setIsGoogleLoading(false);
       }
     } catch (err) {
-      setGoogleModalError(err.message || 'Failed to initiate Google OAuth redirect.');
+      console.warn('[Google OAuth catch]:', err);
+      setShowGoogleModal(true);
       setIsGoogleLoading(false);
     }
   };
@@ -1135,99 +1146,34 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               </div>
             </div>
 
-            {/* Phase 1 Prototype Demo Accounts (Prominently placed on Right Column) */}
+            {/* Institutional Framework Spotlight (Replaces Demo Accounts) */}
             <div style={{
               backgroundColor: 'rgba(0, 0, 0, 0.28)',
               backdropFilter: 'blur(12px)',
               borderRadius: '16px',
-              padding: '14px 16px',
+              padding: '16px 18px',
               border: '1px solid rgba(255, 255, 255, 0.22)',
-              marginBottom: '16px',
+              marginBottom: '18px',
               boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  color: '#FDE68A',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Sparkles size={14} color="#FDE68A" />
-                  <span>Phase 1 Prototype Demo Accounts</span>
-                </div>
-                <span style={{ fontSize: '0.70rem', color: 'rgba(255,255,255,0.7)' }}>
-                  Click to fill
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Sparkles size={16} color="#FDE68A" />
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FDE68A', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Institutional Access Gateway
                 </span>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {DEMO_PERSONAS.map((p) => (
-                  <div
-                    key={p.role}
-                    onClick={() => handleQuickDemoLogin(p)}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      border: '1px solid rgba(255, 255, 255, 0.16)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
-                    }}
-                    title={`Click to log in directly as ${p.role}`}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FFFFFF' }}>
-                          {p.role === 'Student' ? '🎓 Student' : p.role === 'Faculty' ? '🏛️ Faculty' : '🛡️ Admin'}
-                        </span>
-                        <span style={{ fontSize: '0.70rem', opacity: 0.8, color: '#FFFFFF' }}>({p.name})</span>
-                      </div>
-                      <div style={{ fontSize: '0.74rem', color: '#E0E7FF', opacity: 0.95, marginTop: '2px', fontFamily: 'monospace' }}>
-                        {p.email}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={(e) => handleQuickDemoLogin(p, e)}
-                        style={{
-                          backgroundColor: '#8B1528',
-                          color: '#FFFFFF',
-                          border: '1px solid rgba(255,255,255,0.4)',
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#A31D34'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#8B1528'; }}
-                      >
-                        <span>⚡ 1-Click Login</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <p style={{ fontSize: '0.82rem', color: '#FFFFFF', opacity: 0.9, lineHeight: 1.5, margin: 0 }}>
+                Single sign-on gateway for students, academic faculty, and university administrators across all schools of Manav Rachna.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#FDE68A', fontWeight: 700 }}>🎓 Students</div>
+                  <div style={{ fontSize: '0.68rem', color: '#E2E8F0', marginTop: '2px' }}>@mru.ac.in Email OTP</div>
+                </div>
+                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#FDE68A', fontWeight: 700 }}>👨‍🏫 Faculty & Admin</div>
+                  <div style={{ fontSize: '0.68rem', color: '#E2E8F0', marginTop: '2px' }}>Institutional Email / Google</div>
+                </div>
               </div>
             </div>
 
@@ -1625,174 +1571,27 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               </div>
             )}
 
-            {/* Account List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-              {/* Account 1: Student */}
-              <button
-                type="button"
-                disabled={isGoogleLoading}
-                onClick={() => executeGoogleSignIn('22cse0002@mru.ac.in', 'Aarav Sharma')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: '#FFFFFF',
-                  cursor: isGoogleLoading ? 'not-allowed' : 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
-              >
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  backgroundColor: '#10B981',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  A
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1F2937' }}>Aarav Sharma</span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', backgroundColor: '#ECFDF5', color: '#047857' }}>
-                      Student
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    22cse0002@mru.ac.in
-                  </div>
-                </div>
-                <ArrowRight size={14} color="#9CA3AF" />
-              </button>
-
-              {/* Account 2: Faculty / HoD */}
-              <button
-                type="button"
-                disabled={isGoogleLoading}
-                onClick={() => executeGoogleSignIn('hod.cse@mru.edu.in', 'Dr. Meena Sharma')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: '#FFFFFF',
-                  cursor: isGoogleLoading ? 'not-allowed' : 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
-              >
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  backgroundColor: '#3B82F6',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  M
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1F2937' }}>Dr. Meena Sharma</span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
-                      HoD & Faculty
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    hod.cse@mru.edu.in
-                  </div>
-                </div>
-                <ArrowRight size={14} color="#9CA3AF" />
-              </button>
-
-              {/* Account 3: Central Admin */}
-              <button
-                type="button"
-                disabled={isGoogleLoading}
-                onClick={() => executeGoogleSignIn('admin.iccf@mru.edu.in', 'Central Administration Director')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: '#FFFFFF',
-                  cursor: isGoogleLoading ? 'not-allowed' : 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
-              >
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  backgroundColor: '#8B1528',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  C
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1F2937' }}>Central Administration</span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', backgroundColor: '#FEF2F2', color: '#991B1B' }}>
-                      Core Team Admin
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    admin.iccf@mru.edu.in
-                  </div>
-                </div>
-                <ArrowRight size={14} color="#9CA3AF" />
-              </button>
-            </div>
-
-            {/* Custom Google Account Entry */}
-            <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '14px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
-                Or use another official university Google account:
+            {/* Google Account Single Sign-On */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>
+                Enter your authorized Google or university account:
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <input
                   type="email"
                   value={customGoogleEmail}
                   onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                  placeholder="e.g. yourname@mru.ac.in"
+                  placeholder="e.g. Vineetkumar182023@gmail.com or name@mru.ac.in"
                   style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '10px',
                     border: '1px solid #D1D5DB',
-                    fontSize: '0.84rem'
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
                   }}
+                  autoFocus
                 />
                 <button
                   type="button"
@@ -1800,12 +1599,17 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                   onClick={() => executeGoogleSignIn(customGoogleEmail.trim().toLowerCase())}
                   className="btn-primary"
                   style={{
-                    padding: '8px 14px',
-                    fontSize: '0.82rem',
-                    borderRadius: '8px'
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '0.9rem',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
                   }}
                 >
-                  {isGoogleLoading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Sign In'}
+                  {isGoogleLoading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Continue to Portal with Google'}
                 </button>
               </div>
             </div>
