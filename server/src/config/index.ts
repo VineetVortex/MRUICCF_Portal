@@ -52,6 +52,15 @@ export const config = {
 
   bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin.iccf@mru.edu.in',
   
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    user: (process.env.SMTP_USER || '').trim(),
+    pass: (process.env.SMTP_PASS || '').replace(/\s+/g, ''),
+    fromEmail: (process.env.EMAIL_FROM || process.env.SMTP_USER || '').trim(),
+    fromName: process.env.EMAIL_FROM_NAME || 'Manav Rachna ICCF Portal',
+  },
+
   // Scoring parameters adhering to COMPLETE_DOCUMENTATION.md & Master Copy docx
   scoring: {
     certificationThreshold: 65.0, // 65.00% minimum passing and certificate eligibility requirement

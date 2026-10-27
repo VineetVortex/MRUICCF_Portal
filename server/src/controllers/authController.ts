@@ -5,7 +5,7 @@ import { getDb } from '../db/index.js';
 import { config } from '../config/index.js';
 import { User, UserRole } from '../types/index.js';
 import { logAuditEvent } from '../services/auditService.js';
-import { sendOtpEmail } from '../services/emailService.js';
+import { sendOtpEmail, maskEmail } from '../services/emailService.js';
 import { 
   createRefreshSession, 
   rotateRefreshSession, 
@@ -39,15 +39,30 @@ interface TesterMember {
 }
 let testerIndex = new Map<string, TesterMember>();
 
-interface OtpRecord {
-  otp: string;
+export interface OtpRecord {
+  otpHash: string;
   user: User;
   expiresAt: number;
   attempts: number;
+  lastRequestedAt: number;
 }
 
 // In-memory store for active student login OTPs
-const otpStore = new Map<string, OtpRecord>();
+export const otpStore = new Map<string, OtpRecord>();
+
+/**
+ * Generates a cryptographically strong 6-digit verification code.
+ */
+export function generateSecureOtp(): string {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+/**
+ * Creates SHA-256 hash of plaintext OTP for secure in-memory storage.
+ */
+export function hashOtp(otp: string): string {
+  return crypto.createHash('sha256').update(otp.trim()).digest('hex');
+}
 
 // Pre-provisioned cache for fast OTP lookup (populated only during active OTP sessions, no pre-seeded students)
 const authorizedStudentCache = new Map<string, User>();
@@ -401,27 +416,52 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     return;
   }
 
-  // Unified Email OTP Generation for All Roles (Student, Faculty, HoD, Dean, Admin)
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Check rate-limit cooldown (minimum 60 seconds between OTP requests)
+  const existingRecord = otpStore.get(user.email);
+  if (existingRecord && (Date.now() - existingRecord.lastRequestedAt < 60000)) {
+    const remainingSeconds = Math.ceil((60000 - (Date.now() - existingRecord.lastRequestedAt)) / 1000);
+    res.status(429).json({
+      success: false,
+      error: `Please wait ${remainingSeconds} seconds before requesting a new verification code.`,
+      cooldownSeconds: remainingSeconds,
+    });
+    return;
+  }
+
+  // Unified Secure Cryptographic 6-Digit OTP Generation
+  const otp = generateSecureOtp();
+  const otpHash = hashOtp(otp);
+
   otpStore.set(user.email, {
-    otp,
+    otpHash,
     user,
     expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
     attempts: 0,
+    lastRequestedAt: Date.now(),
   });
 
-  console.log(`[OTP DISPATCH] 6-digit verification code sent to ${user.email} (${user.role} - ${user.designation}): ${otp}`);
-  logAuditEvent('AUTH_LOG', `Login OTP generated for ${user.role} ${user.email}`, user.id, {
+  console.log(`[OTP DISPATCH] 6-digit verification code generated for ${maskEmail(user.email)} (expires in 10m)`);
+  logAuditEvent('AUTH_LOG', `Login OTP generated for ${user.role} ${maskEmail(user.email)}`, user.id, {
     email: user.email,
     role: user.role,
     designation: user.designation
   });
 
-  sendOtpEmail({
+  const emailResult = await sendOtpEmail({
     toEmail: user.email,
     studentName: user.name,
     otp,
-  }).catch(err => console.warn('[Email Delivery Warning]', err.message));
+  });
+
+  if (!emailResult.success) {
+    console.error(`[OTP Delivery Failed] Could not deliver OTP to ${maskEmail(user.email)}: ${emailResult.error}`);
+    res.status(502).json({
+      success: false,
+      error: 'Failed to deliver verification code to your email. Please try again shortly or contact university IT.',
+      details: config.isProduction ? undefined : emailResult.message,
+    });
+    return;
+  }
 
   res.status(200).json({
     success: true,
@@ -431,7 +471,7 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     name: user.name,
     designation: user.designation,
     message: `A 6-digit verification code has been dispatched to ${user.email}.`,
-    devOtp: otp,
+    ...(config.isProduction ? {} : { devOtp: otp }),
   });
 }
 
@@ -460,7 +500,10 @@ export async function verifyLoginOtp(req: AuthenticatedRequest, res: Response): 
     return;
   }
 
-  if (record.otp !== otp.toString().trim()) {
+  const inputHash = hashOtp(otp.toString());
+  const match = crypto.timingSafeEqual(Buffer.from(record.otpHash, 'hex'), Buffer.from(inputHash, 'hex'));
+
+  if (!match) {
     record.attempts += 1;
     if (record.attempts >= 5) {
       otpStore.delete(cleanEmail);
@@ -471,7 +514,7 @@ export async function verifyLoginOtp(req: AuthenticatedRequest, res: Response): 
     return;
   }
 
-  // OTP verified successfully
+  // OTP verified successfully (Single use - purge immediately)
   const user = record.user;
   user.lastLoginAt = new Date().toISOString();
   otpStore.delete(cleanEmail);
@@ -490,7 +533,7 @@ export async function verifyLoginOtp(req: AuthenticatedRequest, res: Response): 
   // Set Secure, HttpOnly refresh cookie
   res.cookie(config.cookie.refreshCookieName, rawToken, getRefreshCookieOptions());
 
-  logAuditEvent('AUTH_LOG', `${user.role.toUpperCase()} verified OTP & signed in: ${user.name} (${user.email})`, user.id, {
+  logAuditEvent('AUTH_LOG', `${user.role.toUpperCase()} verified OTP & signed in: ${user.name} (${maskEmail(user.email)})`, user.id, {
     email: user.email,
     role: user.role,
     designation: user.designation
@@ -526,26 +569,51 @@ export async function resendLoginOtp(req: AuthenticatedRequest, res: Response): 
     return;
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Check rate-limit cooldown
+  const existingRecord = otpStore.get(cleanEmail);
+  if (existingRecord && (Date.now() - existingRecord.lastRequestedAt < 60000)) {
+    const remainingSeconds = Math.ceil((60000 - (Date.now() - existingRecord.lastRequestedAt)) / 1000);
+    res.status(429).json({
+      success: false,
+      error: `Please wait ${remainingSeconds} seconds before requesting another code.`,
+      cooldownSeconds: remainingSeconds,
+    });
+    return;
+  }
+
+  const otp = generateSecureOtp();
+  const otpHash = hashOtp(otp);
+
   otpStore.set(cleanEmail, {
-    otp,
+    otpHash,
     user,
     expiresAt: Date.now() + 10 * 60 * 1000,
     attempts: 0,
+    lastRequestedAt: Date.now(),
   });
 
-  console.log(`[OTP RESEND] New 6-digit verification code sent to ${cleanEmail}: ${otp}`);
+  console.log(`[OTP RESEND] New 6-digit verification code generated for ${maskEmail(cleanEmail)} (expires in 10m)`);
 
-  sendOtpEmail({
+  const emailResult = await sendOtpEmail({
     toEmail: cleanEmail,
     studentName: user.name,
     otp,
-  }).catch(err => console.warn('[Email Delivery Warning]', err.message));
+  });
+
+  if (!emailResult.success) {
+    console.error(`[OTP Resend Failed] Could not deliver OTP to ${maskEmail(cleanEmail)}: ${emailResult.error}`);
+    res.status(502).json({
+      success: false,
+      error: 'Failed to deliver new verification code. Please try again shortly.',
+      details: config.isProduction ? undefined : emailResult.message,
+    });
+    return;
+  }
 
   res.status(200).json({
     success: true,
     message: `New verification code dispatched to ${cleanEmail}.`,
-    devOtp: otp,
+    ...(config.isProduction ? {} : { devOtp: otp }),
   });
 }
 

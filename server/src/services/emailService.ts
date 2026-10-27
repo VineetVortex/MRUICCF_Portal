@@ -1,34 +1,197 @@
-import nodemailer from 'nodemailer';
+/**
+ * Manav Rachna ICCF Portal - Enterprise Email Delivery Service
+ * Production-ready Nodemailer integration with Gmail SSL/TLS (port 465),
+ * connection pooling, timeout resiliency, and sanitized audit logging.
+ */
 
-interface SendOtpOptions {
+import nodemailer, { Transporter } from 'nodemailer';
+import { config } from '../config/index.js';
+
+export interface SendOtpOptions {
   toEmail: string;
   studentName?: string;
   otp: string;
 }
 
-export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: SendOtpOptions): Promise<{ success: boolean; message: string; provider?: string }> {
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+export interface EmailDeliveryResult {
+  success: boolean;
+  message: string;
+  messageId?: string;
+  provider?: string;
+  error?: string;
+  errorCode?: string;
+}
 
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const brevoApiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.EMAIL_FROM || smtpUser || 'onboarding@resend.dev';
-  const senderName = process.env.EMAIL_FROM_NAME || 'Manav Rachna ICCF Portal';
+export interface SmtpValidationResult {
+  isValid: boolean;
+  errors: string[];
+  configSummary: {
+    host: string;
+    port: number;
+    secure: boolean;
+    hasUser: boolean;
+    hasPass: boolean;
+    fromEmail: string;
+    fromName: string;
+  };
+}
 
+let transporterInstance: Transporter | null = null;
+let mockTransporter: Transporter | null = null;
 
-  const htmlContent = `
+/**
+ * Validates the SMTP configuration without exposing sensitive secrets.
+ */
+export function validateSmtpConfig(): SmtpValidationResult {
+  const errors: string[] = [];
+  const host = config.smtp.host;
+  const port = config.smtp.port;
+  const user = config.smtp.user;
+  const pass = config.smtp.pass;
+  const fromEmail = config.smtp.fromEmail;
+
+  if (!host || host.trim().length === 0) {
+    errors.push('SMTP_HOST is required (e.g., smtp.gmail.com)');
+  }
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    errors.push('SMTP_PORT must be an integer between 1 and 65535 (default 465)');
+  }
+
+  if (!user || user.trim().length === 0) {
+    errors.push('SMTP_USER is required (Gmail address)');
+  } else if (!user.includes('@')) {
+    errors.push('SMTP_USER must be a valid email address');
+  }
+
+  if (!pass || pass.trim().length === 0) {
+    errors.push('SMTP_PASS is required (16-character Google App Password)');
+  }
+
+  if (!fromEmail || !fromEmail.includes('@')) {
+    errors.push('EMAIL_FROM must be a valid sender email address');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    configSummary: {
+      host: host || 'not configured',
+      port,
+      secure: port === 465,
+      hasUser: Boolean(user && user.length > 0),
+      hasPass: Boolean(pass && pass.length > 0),
+      fromEmail: fromEmail || 'not configured',
+      fromName: config.smtp.fromName,
+    },
+  };
+}
+
+/**
+ * Returns the active reusable SMTP transporter singleton.
+ */
+export function getSmtpTransporter(): Transporter {
+  if (mockTransporter) {
+    return mockTransporter;
+  }
+
+  if (transporterInstance) {
+    return transporterInstance;
+  }
+
+  const { isValid, errors } = validateSmtpConfig();
+  if (!isValid) {
+    throw new Error(`SMTP Configuration Invalid: ${errors.join('; ')}`);
+  }
+
+  const port = config.smtp.port;
+  const isSecure = port === 465;
+
+  transporterInstance = nodemailer.createTransport({
+    host: config.smtp.host,
+    port: port,
+    secure: isSecure, // true for 465 (SSL), false for 587 (STARTTLS)
+    auth: {
+      user: config.smtp.user,
+      pass: config.smtp.pass,
+    },
+    connectionTimeout: 15000, // 15 seconds
+    greetingTimeout: 10000,   // 10 seconds
+    socketTimeout: 20000,     // 20 seconds
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+
+  return transporterInstance;
+}
+
+/**
+ * Allows injecting a mock transporter for unit tests.
+ */
+export function setMockTransporter(mock: Transporter | null): void {
+  mockTransporter = mock;
+}
+
+/**
+ * Verifies SMTP connectivity and credentials without sending an email.
+ */
+export async function verifySmtpConnection(): Promise<{ success: boolean; message: string; errorCode?: string }> {
+  try {
+    const transporter = getSmtpTransporter();
+    await transporter.verify();
+    return {
+      success: true,
+      message: 'SMTP authentication and connection successfully verified.',
+    };
+  } catch (err: any) {
+    let errorCode = 'SMTP_UNKNOWN_ERROR';
+    const message = err.message || '';
+
+    if (message.includes('535') || message.includes('Username and Password not accepted') || message.includes('Invalid login')) {
+      errorCode = 'SMTP_AUTH_FAILED';
+    } else if (message.includes('ETIMEDOUT') || message.includes('ESOCKETTIMEDOUT')) {
+      errorCode = 'SMTP_CONNECTION_TIMEOUT';
+    } else if (message.includes('ECONNREFUSED')) {
+      errorCode = 'SMTP_CONNECTION_REFUSED';
+    } else if (message.includes('certificate') || message.includes('handshake')) {
+      errorCode = 'SMTP_TLS_ERROR';
+    }
+
+    return {
+      success: false,
+      message: `SMTP verification failed: ${message}`,
+      errorCode,
+    };
+  }
+}
+
+/**
+ * Masks email address for secure logging (e.g. v***@gmail.com).
+ */
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return '***';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) return `${local[0]}***@${domain}`;
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+/**
+ * Generates branded HTML and plain-text templates for OTP delivery.
+ */
+function buildOtpEmailContent(studentName: string, otp: string): { html: string; text: string } {
+  const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
       <meta charset="utf-8">
-      <title>ICCF Student Login Code</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Manav Rachna ICCF Login Verification</title>
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF7F2; margin: 0; padding: 24px;">
       <div style="max-width: 520px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #ECE7DF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(139, 21, 40, 0.08);">
         
-        <!-- Header -->
+        <!-- University Header Banner -->
         <div style="background: linear-gradient(135deg, #8B1528 0%, #5E0D1B 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
           <h1 style="margin: 0; font-size: 1.45rem; font-weight: 800; letter-spacing: -0.02em;">
             Manav Rachna University
@@ -38,31 +201,31 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
           </p>
         </div>
 
-        <!-- Content -->
+        <!-- Email Body -->
         <div style="padding: 36px 32px; background-color: #FFFFFF;">
           <p style="font-size: 1.05rem; color: #1C1917; margin-top: 0;">
             Dear <strong>${studentName}</strong>,
           </p>
           <p style="color: #57534E; font-size: 0.92rem; line-height: 1.6; margin-bottom: 24px;">
-            A sign-in request was initiated for your student competency portal. Use the following 6-digit one-time verification code (OTP) to securely complete your login:
+            A sign-in request was initiated for your institutional competency account. Use the following 6-digit one-time verification code (OTP) to complete your login:
           </p>
 
-          <!-- OTP Box -->
+          <!-- OTP Display Block -->
           <div style="text-align: center; margin: 28px 0; padding: 20px; background-color: #FAF8F5; border: 2px dashed #D6D3D1; border-radius: 16px;">
             <div style="font-size: 0.76rem; font-weight: 700; color: #78716C; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">
               Your 6-Digit Verification Code
             </div>
-            <span style="font-family: 'Courier New', monospace; font-size: 2.3rem; font-weight: 800; letter-spacing: 0.35em; color: #8B1528; display: inline-block;">
+            <span style="font-family: 'Courier New', monospace; font-size: 2.4rem; font-weight: 800; letter-spacing: 0.35em; color: #8B1528; display: inline-block;">
               ${otp}
             </span>
           </div>
 
           <p style="color: #78716C; font-size: 0.82rem; line-height: 1.5; margin-bottom: 8px;">
-            ⏳ This code is valid for <strong>10 minutes</strong>. If you did not request this verification code, please ignore this email or notify university IT administration.
+            ⏳ This code is valid for <strong>10 minutes</strong> and can only be used once. If you did not request this verification code, please ignore this email or notify university IT administration immediately.
           </p>
         </div>
 
-        <!-- Footer -->
+        <!-- Institutional Footer -->
         <div style="background-color: #FAF7F2; padding: 18px 24px; text-align: center; font-size: 0.74rem; color: #A8A29E; border-top: 1px solid #ECE7DF;">
           Manav Rachna University • Sector 43, Aravalli Hills, Faridabad, Haryana<br>
           Established under Section 2(f) of UGC Act 1956
@@ -72,213 +235,161 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
     </html>
   `;
 
-  // 1. Try Standard Gmail / Google Workspace SMTP (100% Free, Zero Payment/Card Required)
-  if (smtpUser && smtpPass) {
+  const text = `Manav Rachna University - ICCF Portal
+==================================================
+
+Dear ${studentName},
+
+A sign-in request was initiated for your institutional competency account.
+
+Your 6-Digit Verification Code: ${otp}
+
+This code is valid for 10 minutes and can only be used once.
+If you did not request this verification code, please ignore this email.
+
+Manav Rachna University - Sector 43, Aravalli Hills, Faridabad, Haryana`;
+
+  return { html, text };
+}
+
+/**
+ * Dispatches an official OTP verification email.
+ */
+export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: SendOtpOptions): Promise<EmailDeliveryResult> {
+  const cleanEmail = toEmail ? toEmail.trim().toLowerCase() : '';
+  const masked = maskEmail(cleanEmail);
+
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return {
+      success: false,
+      message: 'Invalid recipient email address.',
+      errorCode: 'INVALID_RECIPIENT',
+    };
+  }
+
+  // 1. Attempt Primary Gmail SMTP Delivery
+  const validation = validateSmtpConfig();
+  if (validation.isValid) {
     try {
-      const port = Number(process.env.SMTP_PORT) || 465;
-      const isSecure = port === 465;
-      const cleanPass = smtpPass.replace(/\s+/g, '');
+      const transporter = getSmtpTransporter();
+      const { html, text } = buildOtpEmailContent(studentName, otp);
 
-      const transporter = nodemailer.createTransport({
-        host: smtpHost || 'smtp.gmail.com',
-        port: port,
-        secure: isSecure,
-        auth: {
-          user: smtpUser,
-          pass: cleanPass,
-        },
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
+      const senderAddress = `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`;
 
-      await transporter.sendMail({
-        from: `"${senderName}" <${smtpUser}>`,
-        to: toEmail,
+      const info = await transporter.sendMail({
+        from: senderAddress,
+        to: cleanEmail,
         subject: `🔐 ${otp} is your Manav Rachna ICCF Login Code`,
-        html: htmlContent,
+        text: text,
+        html: html,
       });
 
-      console.log(`[SMTP Mailer SUCCESS] Real-time OTP email delivered to ${toEmail} via Gmail SMTP`);
-      return { success: true, message: `Real-time OTP email sent via SMTP to ${toEmail}`, provider: 'SMTP' };
+      console.log(`[SMTP Mailer SUCCESS] OTP email accepted by SMTP server for ${masked} (MsgID: ${info.messageId})`);
+
+      return {
+        success: true,
+        message: `Verification code successfully dispatched to ${cleanEmail}.`,
+        messageId: info.messageId,
+        provider: 'SMTP',
+      };
     } catch (err: any) {
-      console.error(`[SMTP Delivery ERROR for ${toEmail}]:`, err.message);
+      const errMsg = err.message || 'Unknown SMTP error';
+      console.error(`[SMTP Delivery ERROR for ${masked}]:`, errMsg);
+
+      return {
+        success: false,
+        message: 'Failed to deliver OTP via SMTP server.',
+        error: errMsg,
+        errorCode: err.code || 'SMTP_SEND_FAILED',
+        provider: 'SMTP',
+      };
     }
   }
 
-  // 2. Try Resend Cloud API (if key is set)
-  if (resendApiKey) {
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: `${senderName} <${senderEmail}>`,
-          to: [toEmail],
-          subject: `🔐 ${otp} is your Manav Rachna ICCF Login Code`,
-          html: htmlContent
-        })
-      });
-
-      const resData: any = await response.json();
-      if (response.ok) {
-        console.log(`[Resend API] Real-time OTP email delivered to ${toEmail} (ID: ${resData?.id})`);
-        return { success: true, message: `Real-time OTP email sent via Resend to ${toEmail}`, provider: 'Resend' };
-      } else if (resData?.statusCode === 403 && resData?.message?.includes('testing emails to your own email address')) {
-        const match = resData.message.match(/\(([^)]+)\)/);
-        const devRecipient = match ? match[1] : null;
-        if (devRecipient) {
-          console.log(`[Resend Sandbox] Delivering real-time email to your verified test inbox: ${devRecipient}...`);
-          const testResp = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: `${senderName} <${senderEmail}>`,
-              to: [devRecipient],
-              subject: `🔐 [For ${toEmail}] ${otp} is your ICCF Portal Code`,
-              html: htmlContent
-            })
-          });
-          const testData: any = await testResp.json();
-          if (testResp.ok) {
-            console.log(`[Resend Sandbox SUCCESS] Email delivered live to your inbox (${devRecipient})! (ID: ${testData?.id})`);
-            return { success: true, message: `Real-time OTP email delivered to ${devRecipient}`, provider: 'Resend Sandbox' };
-          }
-        }
-      } else {
-        console.warn(`[Resend API Warning] Delivery issue:`, resData);
-      }
-    } catch (err: any) {
-      console.warn(`[Resend API Network Error]`, err.message);
-    }
-  }
-
-  // 2. Try Brevo Cloud API (if key is set)
-  if (brevoApiKey) {
-    try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'api-key': brevoApiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sender: { name: senderName, email: senderEmail },
-          to: [{ email: toEmail, name: studentName }],
-          subject: `🔐 ${otp} is your Manav Rachna ICCF Login Code`,
-          htmlContent
-        })
-      });
-
-      const resData: any = await response.json();
-      if (response.ok) {
-        console.log(`[Brevo API] Real-time OTP email delivered to ${toEmail} (MessageId: ${resData?.messageId})`);
-        return { success: true, message: `Real-time OTP email sent via Brevo to ${toEmail}`, provider: 'Brevo' };
-      } else {
-        console.warn(`[Brevo API Warning] Delivery issue:`, resData);
-      }
-    } catch (err: any) {
-      console.warn(`[Brevo API Network Error]`, err.message);
-    }
-  }
-
-  // 3. Fallback when API key is not yet configured in .env
-  console.log(`----------------------------------------------------------------------`);
-  console.log(`[EMAIL DISPATCH NOTICE] Real-time OTP generated for ${toEmail}:`);
-  console.log(`>> CODE: ${otp} <<`);
-  console.log(`>> Note: To send actual emails to student inboxes, add RESEND_API_KEY or BREVO_API_KEY to server/.env <<`);
-  console.log(`----------------------------------------------------------------------`);
-
-  return { 
-    success: true, 
-    message: `OTP generated for ${toEmail} (${otp}). Add RESEND_API_KEY in server/.env for live inbox delivery.`,
-    provider: 'Simulated' 
+  // 2. Fallback when SMTP is unconfigured in development/testing
+  console.warn(`[EMAIL WARNING] SMTP not configured. Missing: ${validation.errors.join(', ')}`);
+  return {
+    success: false,
+    message: 'Email service is not configured. Please contact the administrator.',
+    error: validation.errors.join('; '),
+    errorCode: 'SMTP_NOT_CONFIGURED',
+    provider: 'None',
   };
 }
 
-interface SendInviteOptions {
+export interface SendInviteOptions {
   toEmail: string;
   name?: string;
   portalUrl?: string;
   role?: string;
 }
 
-export async function sendInviteEmail({ toEmail, name = 'Student', portalUrl = 'https://iccf.manavrachna.edu.in', role = 'student' }: SendInviteOptions): Promise<{ success: boolean; message: string }> {
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const senderEmail = process.env.EMAIL_FROM || smtpUser || 'onboarding@resend.dev';
-  const senderName = process.env.EMAIL_FROM_NAME || 'Manav Rachna ICCF Portal';
+/**
+ * Dispatches an official invitation email for tester/participant access.
+ */
+export async function sendInviteEmail({
+  toEmail,
+  name = 'Participant',
+  portalUrl = 'https://iccf.manavrachna.edu.in',
+  role = 'student',
+}: SendInviteOptions): Promise<{ success: boolean; message: string; messageId?: string }> {
+  const cleanEmail = toEmail ? toEmail.trim().toLowerCase() : '';
+  const masked = maskEmail(cleanEmail);
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="utf-8"><title>Invitation to ICCF Competency Assessment</title></head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF7F2; margin: 0; padding: 24px;">
-      <div style="max-width: 540px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #ECE7DF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(139, 21, 40, 0.08);">
-        <div style="background: linear-gradient(135deg, #8B1528 0%, #5E0D1B 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
-          <h1 style="margin: 0; font-size: 1.45rem; font-weight: 800;">Manav Rachna University</h1>
-          <p style="margin: 6px 0 0; opacity: 0.9; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">
-            Institutional Competency Certification Framework (ICCF)
-          </p>
-        </div>
-        <div style="padding: 36px 32px; background-color: #FFFFFF;">
-          <p style="font-size: 1.05rem; color: #1C1917; margin-top: 0;">Dear <strong>${name}</strong>,</p>
-          <p style="color: #57534E; font-size: 0.92rem; line-height: 1.6;">
-            You have been officially invited and authorized as a participant in the <strong>Manav Rachna ICCF Human-Centric Skills Assessment Beta</strong>.
-          </p>
-          <div style="background-color: #FAF8F5; border: 1px solid #E7E5E4; border-radius: 14px; padding: 18px 20px; margin: 24px 0;">
-            <div style="font-size: 0.85rem; font-weight: 700; color: #1C1917; margin-bottom: 8px;">Your Portal Access Details:</div>
-            <div style="font-size: 0.82rem; color: #57534E; line-height: 1.6;">
-              • <strong>Registered Email:</strong> ${toEmail}<br>
-              • <strong>Portal Role:</strong> ${role.toUpperCase()}<br>
-              • <strong>Access Method:</strong> Sign in with email OTP or click "Continue with Google"
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, message: 'Invalid recipient email.' };
+  }
+
+  const validation = validateSmtpConfig();
+  if (!validation.isValid) {
+    return { success: false, message: 'SMTP not configured.' };
+  }
+
+  try {
+    const transporter = getSmtpTransporter();
+    const senderAddress = `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><title>Invitation to ICCF Assessment</title></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF7F2; margin: 0; padding: 24px;">
+        <div style="max-width: 540px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #ECE7DF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(139, 21, 40, 0.08);">
+          <div style="background: linear-gradient(135deg, #8B1528 0%, #5E0D1B 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
+            <h1 style="margin: 0; font-size: 1.45rem; font-weight: 800;">Manav Rachna University</h1>
+            <p style="margin: 6px 0 0; opacity: 0.9; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">
+              Institutional Competency Certification Framework (ICCF)
+            </p>
+          </div>
+          <div style="padding: 36px 32px;">
+            <p style="font-size: 1.05rem; color: #1C1917; margin-top: 0;">Dear <strong>${name}</strong>,</p>
+            <p style="color: #57534E; font-size: 0.92rem; line-height: 1.6;">
+              You have been registered for official assessment in the Manav Rachna ICCF Portal (${role}).
+            </p>
+            <div style="text-align: center; margin: 28px 0;">
+              <a href="${portalUrl}" style="background-color: #8B1528; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; display: inline-block;">
+                Launch Assessment Portal
+              </a>
             </div>
           </div>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${portalUrl}" style="background-color: #8B1528; color: #FFFFFF; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.95rem; display: inline-block;">
-              Access ICCF Assessment Portal →
-            </a>
-          </div>
-          <p style="color: #78716C; font-size: 0.8rem; line-height: 1.5;">
-            Upon logging in, you will be able to take the diagnostic assessment, evaluate your 15 core competency dimensions, and receive your verified institutional credential.
-          </p>
         </div>
-        <div style="background-color: #FAF7F2; padding: 18px 24px; text-align: center; font-size: 0.74rem; color: #A8A29E; border-top: 1px solid #ECE7DF;">
-          Manav Rachna Educational Institutions • Sector 43, Aravalli Hills, Faridabad, Haryana
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+      </body>
+      </html>
+    `;
 
-  if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpPort === 465, auth: { user: smtpUser, pass: smtpPass } });
-      await transporter.sendMail({ from: `"${senderName}" <${smtpUser}>`, to: toEmail, subject: `🎓 You're invited to the Manav Rachna ICCF Competency Assessment`, html: htmlContent });
-      return { success: true, message: `Invite delivered to ${toEmail}` };
-    } catch (e: any) { console.warn('[SMTP Invite Error]', e.message); }
+    const info = await transporter.sendMail({
+      from: senderAddress,
+      to: cleanEmail,
+      subject: `🎓 Invitation: Manav Rachna ICCF Competency Assessment`,
+      html: htmlContent,
+      text: `Dear ${name},\n\nYou have been invited to the Manav Rachna ICCF Portal. Access at: ${portalUrl}`,
+    });
+
+    console.log(`[SMTP Mailer SUCCESS] Invite email sent to ${masked} (MsgID: ${info.messageId})`);
+    return { success: true, message: `Invite sent to ${cleanEmail}`, messageId: info.messageId };
+  } catch (err: any) {
+    console.error(`[SMTP Invite ERROR for ${masked}]:`, err.message);
+    return { success: false, message: err.message };
   }
-
-  if (resendApiKey) {
-    try {
-      const resp = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: `${senderName} <${senderEmail}>`, to: [toEmail], subject: `🎓 You're invited to the Manav Rachna ICCF Competency Assessment`, html: htmlContent })
-      });
-      if (resp.ok) return { success: true, message: `Invite delivered via Resend to ${toEmail}` };
-    } catch (e: any) { console.warn('[Resend Invite Error]', e.message); }
-  }
-
-  console.log(`[INVITE EMAIL DISPATCH] For ${toEmail} (${name}) -> Link: ${portalUrl}`);
-  return { success: true, message: `Invite simulated for ${toEmail}` };
 }
+

@@ -10,9 +10,11 @@
     "start": "node dist/index.js",
     "seed": "tsx src/seeds/seedDatabase.ts",
     "test:auth": "tsx src/tests/authSecurity.test.ts",
+    "test:otp": "tsx src/tests/otpEmail.test.ts",
     "test:qb": "tsx src/tests/questionBank.test.ts",
     "test:faculty": "tsx src/tests/facultyPortal.test.ts",
-    "test": "npm run test:auth && npm run test:qb && npm run test:faculty"
+    "verify:smtp": "tsx src/scripts/verifySmtp.ts",
+    "test": "npm run test:auth && npm run test:otp && npm run test:qb && npm run test:faculty"
   },
   "keywords": [
     "iccf",
