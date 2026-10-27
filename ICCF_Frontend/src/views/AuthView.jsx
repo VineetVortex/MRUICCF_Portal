@@ -274,6 +274,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
 
     if (
       cleanEmail !== 'vineetkumar182023@gmail.com' &&
+      cleanEmail !== 'vineetkr013@gmail.com' &&
       !cleanEmail.endsWith('@mru.ac.in') &&
       !cleanEmail.endsWith('.mru.ac.in') &&
       !cleanEmail.endsWith('@mru.edu.in') && 

@@ -92,7 +92,13 @@ export function saveAuthorizedTesters(testers) {
  */
 export function isTesterAuthorized(email) {
   const clean = (email || '').trim().toLowerCase();
-  if (clean === 'vineetkumar182023@gmail.com' || clean === 'iccf@mruadmin.edu.in') {
+  if (
+    clean === 'vineetkumar182023@gmail.com' ||
+    clean === 'vineetkr013@gmail.com' ||
+    clean === 'iccf@mruadmin.edu.in' ||
+    clean === 'admin.iccf@mru.edu.in' ||
+    clean === BOOTSTRAP_ADMIN_EMAIL.toLowerCase().trim()
+  ) {
     return true;
   }
   const isStrict = isStrictTestingModeEnabled();
