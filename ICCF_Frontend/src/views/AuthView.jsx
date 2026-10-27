@@ -270,6 +270,8 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const isTester = isTesterAuthorized(cleanEmail);
+
     if (
       cleanEmail !== 'vineetkumar182023@gmail.com' &&
       !cleanEmail.endsWith('@mru.ac.in') &&
@@ -279,9 +281,10 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       !cleanEmail.includes('manavrachna.edu.in') && 
       cleanEmail !== BOOTSTRAP_ADMIN_EMAIL.toLowerCase() &&
       cleanEmail !== 'iccf@mruadmin.edu.in' &&
-      cleanEmail !== 'admin.iccf@mru.edu.in'
+      cleanEmail !== 'admin.iccf@mru.edu.in' &&
+      !isTester
     ) {
-      setError('Please use your official university email: @mru.ac.in for Students, @mru.edu.in for Faculty, or @mruadmin.edu.in for Admin.');
+      setError('Please use your official university email (@mru.ac.in / @mru.edu.in) or an authorized tester email address.');
       return;
     }
 
@@ -660,12 +663,12 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               fontFamily: 'var(--font-serif)',
               lineHeight: 1.2
             }}>
-              {isOtpStep ? 'Verify Student Email OTP' : 'Institutional Portal Login'}
+              {isOtpStep ? 'Verify Official Email OTP' : 'Institutional Portal Login'}
             </h2>
             <p style={{ color: '#78716C', fontSize: '0.86rem', marginTop: '6px' }}>
               {isOtpStep 
-                ? 'Enter the 6-digit security code dispatched to your student email'
-                : 'Sign in with your official university credentials (@mru.ac.in or @mru.edu.in)'}
+                ? 'Enter the 6-digit verification code dispatched to your registered email'
+                : 'Sign in with your official university credentials (@mru.ac.in, @mru.edu.in, or authorized testing email)'}
             </p>
           </div>
 
