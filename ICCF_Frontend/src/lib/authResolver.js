@@ -313,51 +313,15 @@ export function registerClientStudent({ name, email, rollNo, department, deptCod
   return studentUser;
 }
 
-/**
- * Client-side OTP Management for Offline/Local Resilience
- */
-export function generateClientOtp(email) {
-  const cleanEmail = (email || '').trim().toLowerCase();
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
 
-  try {
-    const store = JSON.parse(localStorage.getItem('mr_iccf_otps') || '{}');
-    store[cleanEmail] = { code, expiresAt, attempts: 0 };
-    localStorage.setItem('mr_iccf_otps', JSON.stringify(store));
-  } catch (err) {
-    // Ignore storage err
+// Purge any legacy client-side OTP store from previous sessions
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('mr_iccf_otps');
   }
-
-  console.log(`[CLIENT OTP ENGINE] Generated OTP for ${cleanEmail}: ${code}`);
-  return code;
+} catch (e) {
+  // Ignore restricted environments
 }
 
-export function verifyClientOtp(email, enteredCode) {
-  const cleanEmail = (email || '').trim().toLowerCase();
-  try {
-    const store = JSON.parse(localStorage.getItem('mr_iccf_otps') || '{}');
-    const record = store[cleanEmail];
-    if (!record) {
-      return { success: false, error: 'No active OTP found. Please click Resend OTP.' };
-    }
-    if (Date.now() > record.expiresAt) {
-      delete store[cleanEmail];
-      localStorage.setItem('mr_iccf_otps', JSON.stringify(store));
-      return { success: false, error: 'OTP has expired. Please request a new code.' };
-    }
-    if (record.code !== enteredCode.trim()) {
-      return { success: false, error: 'Invalid verification code. Please check your email and try again.' };
-    }
-
-    // Success! Clear OTP
-    delete store[cleanEmail];
-    localStorage.setItem('mr_iccf_otps', JSON.stringify(store));
-    const user = resolveClientIdentity(cleanEmail);
-    return { success: true, user };
-  } catch (err) {
-    return { success: false, error: 'Error validating code. Please try again.' };
-  }
-}
 
 

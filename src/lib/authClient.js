@@ -107,11 +107,15 @@ export async function silentRefresh(isProactiveOrInit = false) {
       });
 
       if (!res.ok) {
+        if (isProactiveOrInit && (res.status === 401 || res.status === 403)) {
+          // Expected clean state on initial page load when visitor has no existing session
+          return { success: false, unauthenticated: true };
+        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || `Refresh failed with status ${res.status}`);
       }
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (result.success && result.data?.accessToken) {
         setAuthSession(result.data.accessToken, result.data.user);
         return { success: true, user: result.data.user };
@@ -123,6 +127,9 @@ export async function silentRefresh(isProactiveOrInit = false) {
       if (!isProactiveOrInit) {
         clearAuthSession();
         notifyListeners('session_expired', { reason: err.message });
+      }
+      if (isProactiveOrInit) {
+        return { success: false, unauthenticated: true };
       }
       throw err;
     } finally {
@@ -178,43 +185,114 @@ export async function authFetch(url, options = {}) {
  * Authenticates user credentials against the backend API
  */
 export async function apiLoginUser({ email, password, isGoogleSso, name }) {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, password, isGoogleSso, name }),
-  });
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, isGoogleSso, name }),
+    });
 
-  const data = await res.json();
-  if (res.ok && data.success) {
-    if (data.requireOtp) {
-      return { requireOtp: true, email: data.email, devOtp: data.devOtp, message: data.message };
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      if (data.requireOtp) {
+        return { 
+          success: true, 
+          requireOtp: true, 
+          email: data.email, 
+          message: data.message || `A 6-digit verification code has been dispatched to ${email}.` 
+        };
+      }
+      if (data.data?.accessToken) {
+        setAuthSession(data.data.accessToken, data.data.user);
+      }
+      return data;
     }
-    if (data.data?.accessToken) {
-      setAuthSession(data.data.accessToken, data.data.user);
-    }
+
+    return {
+      success: false,
+      status: res.status,
+      error: data.error || (res.status === 429 
+        ? 'Rate limit exceeded: Please wait before requesting another code.' 
+        : (res.status === 502 
+          ? 'Email dispatch service is temporarily unavailable. Please try again shortly.' 
+          : 'Authentication failed. Please verify your email.')),
+      cooldownSeconds: data.cooldownSeconds
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: 'Network connection failed. Please ensure the backend server is reachable.'
+    };
   }
-
-  return data;
 }
 
 /**
- * Verifies student 2FA OTP code
+ * Verifies email 2FA OTP code on server
  */
 export async function apiVerifyOtp({ email, otp }) {
-  const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, otp }),
-  });
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, otp }),
+    });
 
-  const data = await res.json();
-  if (res.ok && data.success && data.data?.accessToken) {
-    setAuthSession(data.data.accessToken, data.data.user);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success && data.data?.accessToken) {
+      setAuthSession(data.data.accessToken, data.data.user);
+      return data;
+    }
+
+    return {
+      success: false,
+      status: res.status,
+      error: data.error || 'Invalid verification code. Please check your email and try again.'
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: 'Failed to verify code due to a network error. Please try again.'
+    };
   }
+}
 
-  return data;
+/**
+ * Requests a fresh 6-digit verification code with rate-limit cooldown
+ */
+export async function apiResendOtp({ email }) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      return { 
+        success: true, 
+        message: data.message || `A new verification code has been dispatched to ${email}.`,
+        cooldownSeconds: data.cooldownSeconds || 60
+      };
+    }
+
+    return {
+      success: false,
+      status: res.status,
+      error: data.error || (res.status === 429 
+        ? 'Please wait before requesting another verification code.' 
+        : 'Failed to dispatch new verification code. Please try again shortly.'),
+      cooldownSeconds: data.cooldownSeconds
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: 'Network error while requesting new verification code.'
+    };
+  }
 }
 
 /**

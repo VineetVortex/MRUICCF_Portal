@@ -471,7 +471,6 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     name: user.name,
     designation: user.designation,
     message: `A 6-digit verification code has been dispatched to ${user.email}.`,
-    ...(config.isProduction ? {} : { devOtp: otp }),
   });
 }
 
@@ -613,7 +612,6 @@ export async function resendLoginOtp(req: AuthenticatedRequest, res: Response): 
   res.status(200).json({
     success: true,
     message: `New verification code dispatched to ${cleanEmail}.`,
-    ...(config.isProduction ? {} : { devOtp: otp }),
   });
 }
 

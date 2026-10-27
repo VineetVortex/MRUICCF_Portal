@@ -25,13 +25,12 @@ import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized }
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { 
   resolveClientIdentity, 
-  parseStudentEmail, 
-  generateClientOtp,
-  verifyClientOtp
+  parseStudentEmail 
 } from '../lib/authResolver';
 import {
   apiLoginUser,
   apiVerifyOtp,
+  apiResendOtp,
   apiForgotPassword,
   apiResetPassword,
   subscribeAuth
@@ -96,7 +95,6 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
   // Student OTP Verification Step
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
-  const [activeOtpDev, setActiveOtpDev] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
 
   // Password Recovery State (Self-Service for existing accounts)
@@ -302,8 +300,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       
       if (result.requireOtp) {
         setIsOtpStep(true);
-        setActiveOtpDev(result.devOtp || '');
-        setResendTimer(60);
+        setResendTimer(result.cooldownSeconds || 60);
         setSuccessMessage(result.message || `A 6-digit verification code has been dispatched to ${cleanEmail}.`);
         setIsLoading(false);
         return;
@@ -319,19 +316,9 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       setError(result.error || 'Authentication failed. Please verify your email or contact IT Support.');
       setIsLoading(false);
     } catch (err) {
-      console.warn('[Auth] Server login notice, attempting local OTP engine...', err);
-      // Fallback for offline mode: generate client OTP for all roles
-      try {
-        const clientOtp = generateClientOtp(cleanEmail);
-        setIsOtpStep(true);
-        setActiveOtpDev(clientOtp);
-        setResendTimer(60);
-        setSuccessMessage(`Security OTP dispatched to ${cleanEmail}.`);
-      } catch (e) {
-        setError('Unable to authenticate with provided email. Please contact IT Support.');
-      } finally {
-        setIsLoading(false);
-      }
+      console.error('[Auth] Server login error:', err);
+      setError(err.message || 'Unable to authenticate with provided email. Please contact IT Support.');
+      setIsLoading(false);
     }
   };
 
@@ -368,59 +355,37 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       setError(result.error || 'Invalid verification code. Please check your email.');
       setIsLoading(false);
     } catch (err) {
-      const clientRes = verifyClientOtp(cleanEmail, otpCode.trim());
-      if (clientRes.success && clientRes.user) {
-        const user = clientRes.user;
-        const role = (user.role || '').toLowerCase();
-        const roleLabel = (role === 'core_team' || role === 'admin' || role === 'system_admin')
-          ? 'Central Administration Portal'
-          : (role === 'faculty' || role === 'dept_head' || role === 'hod' || role === 'dean')
-            ? 'Faculty & Academic Portal'
-            : 'Student Dashboard';
-        setSuccessMessage(`OTP verified! Accessing ${roleLabel}...`);
-        setIsLoading(false);
-        applyUserSession(user);
-      } else {
-        setError(clientRes.error || 'Invalid OTP code. Please verify the code sent to your email.');
-        setIsLoading(false);
-      }
+      console.error('[Auth] Server OTP verification error:', err);
+      setError(err.message || 'Verification failed. Please check your connection and try again.');
+      setIsLoading(false);
     }
   };
 
   // Handle Resend OTP
   const handleResendOtp = async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || isLoading) return;
     setError('');
     setSuccessMessage('');
     setIsLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
     try {
-      const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL || '/api'}/auth/resend-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail })
-      }, 2500);
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setActiveOtpDev(data.devOtp || '');
-          setResendTimer(60);
-          setSuccessMessage('A fresh 6-digit OTP code has been dispatched to your email.');
-          setIsLoading(false);
-          return;
+      const result = await apiResendOtp({ email: cleanEmail });
+      if (result.success) {
+        setResendTimer(result.cooldownSeconds || 60);
+        setSuccessMessage(result.message || 'A fresh 6-digit OTP code has been dispatched to your email.');
+      } else {
+        if (result.cooldownSeconds) {
+          setResendTimer(result.cooldownSeconds);
         }
+        setError(result.error || 'Failed to dispatch new verification code. Please try again.');
       }
     } catch (err) {
-      // Offline fallback
+      console.error('[Auth] Resend OTP error:', err);
+      setError(err.message || 'Unable to connect to server. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    const newCode = generateClientOtp(cleanEmail);
-    setActiveOtpDev(newCode);
-    setResendTimer(60);
-    setSuccessMessage('New verification code sent to your email.');
-    setIsLoading(false);
   };
 
   // Open the interactive Google Workspace Account Chooser modal
@@ -450,18 +415,18 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     setIsLoading(true);
     try {
       const result = await apiLoginUser({ email: clean });
-      setIsOtpStep(true);
-      setResendTimer(60);
-      setSuccessMessage(result.message || `A 6-digit verification code has been dispatched to ${clean}.`);
-    } catch (err) {
-      try {
-        generateClientOtp(clean);
+      if (result.requireOtp) {
         setIsOtpStep(true);
-        setResendTimer(60);
-        setSuccessMessage(`Security OTP dispatched to ${clean}.`);
-      } catch (e) {
-        setError('Unable to authenticate with provided email.');
+        setResendTimer(result.cooldownSeconds || 60);
+        setSuccessMessage(result.message || `A 6-digit verification code has been dispatched to ${clean}.`);
+      } else if (result.success && (result.data?.user || result.user)) {
+        applyUserSession(result.data?.user || result.user);
+      } else {
+        setError(result.error || 'Authentication failed. Please verify your email.');
       }
+    } catch (err) {
+      console.error('[Auth] Google sign-in OTP dispatch error:', err);
+      setError(err.message || 'Unable to authenticate with provided email.');
     } finally {
       setIsLoading(false);
     }
@@ -748,45 +713,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 </button>
               </div>
 
-              {activeOtpDev && (
-                <div style={{
-                  backgroundColor: '#FEF3C7',
-                  border: '1px dashed #F59E0B',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontSize: '0.85rem',
-                  color: '#92400E'
-                }}>
-                  <div>
-                    <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'block', color: '#B45309' }}>
-                      ⚡ Instant Verification Code:
-                    </span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.25em', color: '#92400E' }}>
-                      {activeOtpDev}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOtpCode(activeOtpDev)}
-                    style={{
-                      backgroundColor: '#D97706',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '8px 14px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(217, 119, 6, 0.2)'
-                    }}
-                  >
-                    Auto-fill Code
-                  </button>
-                </div>
-              )}
+
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '6px' }}>
