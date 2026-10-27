@@ -177,16 +177,16 @@ export default function FacultyView({ setView, currentUser, onLogout }) {
           const uniqueStudents = new Set(deptAttempts.map(a => a.userId || a.rollNo).filter(Boolean)).size;
           const avgScore = deptAttempts.length > 0 
             ? Math.round(deptAttempts.reduce((acc, a) => acc + (a.overallScore || 0), 0) / deptAttempts.length)
-            : 76;
+            : 0;
           
           setDashboardData({
             metrics: {
-              assignedStudents: uniqueStudents > 0 ? uniqueStudents : 142,
+              assignedStudents: uniqueStudents,
               activeAssessments: localAssessments.filter(a => a.active).length,
-              pendingReviews: 2,
-              completedAssessments: deptAttempts.length > 0 ? deptAttempts.length : 86,
+              pendingReviews: 0,
+              completedAssessments: deptAttempts.length,
               averageCompetencyScore: avgScore,
-              upcomingDeadlines: 2
+              upcomingDeadlines: 0
             },
             recentActivity: deptAttempts.slice(0, 4).map(a => ({
               id: a.id,
@@ -195,9 +195,7 @@ export default function FacultyView({ setView, currentUser, onLogout }) {
               subtitle: `Scored ${Math.round(a.overallScore)}% • ${a.certificationStatus}`,
               timestamp: a.timestamp || new Date().toISOString()
             })),
-            pendingActions: [
-              { id: 'act_1', title: 'Review Pending Question Drafts in CST', type: 'urgent', link: 'question-queue' }
-            ]
+            pendingActions: []
           });
         }
 

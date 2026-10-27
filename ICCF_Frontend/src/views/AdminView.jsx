@@ -576,17 +576,17 @@ export default function AdminView({
       .filter(s => typeof s === 'number');
     const avgScore = compScores.length > 0 
       ? Math.round(compScores.reduce((acc, v) => acc + v, 0) / compScores.length) 
-      : (c.univAvg || 75);
+      : 0;
     return {
       skill: c.name,
       current: avgScore,
-      previous: c.univAvg || 72
+      previous: compScores.length > 0 ? (c.univAvg || 72) : 0
     };
   });
   const stepX = usableWidth / Math.max(1, (pointsData.length - 1));
 
   const getY = (val) => {
-    const minVal = 50;
+    const minVal = 0;
     const maxVal = 100;
     const ratio = (val - minVal) / (maxVal - minVal);
     return padTop + usableHeight * (1 - ratio);
@@ -595,7 +595,7 @@ export default function AdminView({
   const currentLine = pointsData.map((d, i) => `${padLeft + i * stepX},${getY(d.current)}`).join(' ');
   const prevLine = pointsData.map((d, i) => `${padLeft + i * stepX},${getY(d.previous)}`).join(' ');
 
-  // Department scores
+  // Department scores (100% dynamic based on submitted attempts)
   const deptMap = {};
   attempts.forEach(a => {
     const dept = a.department || 'General';
@@ -610,9 +610,9 @@ export default function AdminView({
     color: ['#8B1528', '#2563EB', '#0D9488', '#D97706', '#7C3AED'][idx % 5]
   }));
   const displayDepts = deptList.length > 0 ? deptList : [
-    { name: 'CST', fullName: 'Computer Science & Technology', score: 78, color: '#8B1528' },
-    { name: 'ECE', fullName: 'Electronics & Communication', score: 72, color: '#2563EB' },
-    { name: 'ME', fullName: 'Mechanical Engineering', score: 68, color: '#0D9488' }
+    { name: 'CST', fullName: 'Computer Science & Technology', score: 0, color: '#8B1528' },
+    { name: 'ECE', fullName: 'Electronics & Communication', score: 0, color: '#2563EB' },
+    { name: 'ME', fullName: 'Mechanical Engineering', score: 0, color: '#0D9488' }
   ];
 
   return (

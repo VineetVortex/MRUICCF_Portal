@@ -31,111 +31,19 @@ try {
   // ignore
 }
 
-// In-memory store for faculty drafts and notifications if Supabase table is fresh
+// In-memory store for faculty drafts and notifications
 const inMemoryQuestionDrafts: any[] = [];
 const inMemoryAssessmentDrafts: any[] = [];
-const inMemoryNotifications: any[] = [
-  {
-    id: 'notif_welcome',
-    userId: 'all',
-    title: 'Academic Term 2026-27 Active',
-    description: 'Master Competency Framework calibrated. Faculty assessment creation is now open.',
-    type: 'info',
-    isRead: false,
-    createdAt: new Date().toISOString()
-  }
-];
-
-// Helper: Seed initial faculty drafts for testing if none exist
-function ensureInitialFacultyData(facultyName: string, dept: string) {
-  if (inMemoryQuestionDrafts.length === 0) {
-    inMemoryQuestionDrafts.push(
-      {
-        id: 9001,
-        skillId: 1,
-        skillName: 'Communication',
-        text: 'During a cross-functional lab briefing, a teammate presents inaccurate test figures. How do you interject to preserve scientific accuracy while keeping team morale intact?',
-        isReverse: false,
-        difficulty: 'Intermediate',
-        approvalStatus: 'pending',
-        submissionStatus: 'submitted',
-        createdBy: 'Dr. Vivek Sharma',
-        facultyId: 'usr_fac_cst_viveksharma',
-        department: 'Computer Science & Technology',
-        explanation: 'Measures tactful assertive communication in technical scenarios.',
-        reviewComments: null,
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        id: 9002,
-        skillId: 6,
-        skillName: 'Collaboration & Teamwork',
-        text: 'When team members disagree on software architecture choices, I usually avoid the meeting to let senior members resolve it.',
-        isReverse: true,
-        difficulty: 'Intermediate',
-        approvalStatus: 'pending',
-        submissionStatus: 'submitted',
-        createdBy: 'Ms. Chandni Magoo',
-        facultyId: 'usr_fac_cst_chandni',
-        department: 'Computer Science & Technology',
-        explanation: 'Reverse scored item testing active participation vs social loafing.',
-        reviewComments: null,
-        createdAt: new Date(Date.now() - 172800000).toISOString()
-      },
-      {
-        id: 9003,
-        skillId: 11,
-        skillName: 'Ethics & Integrity',
-        text: 'If proprietary codebase documentation is accidentally left on an unsecured repository, what immediate protocol do you execute?',
-        isReverse: false,
-        difficulty: 'Advanced',
-        approvalStatus: 'approved',
-        submissionStatus: 'approved',
-        createdBy: facultyName || 'Dr. Vivek Sharma',
-        facultyId: 'usr_current',
-        department: dept,
-        explanation: 'Evaluates adherence to institutional information security policies.',
-        reviewComments: 'Approved by Institutional Academic Committee.',
-        createdAt: new Date(Date.now() - 259200000).toISOString()
-      }
-    );
-  }
-
-  if (inMemoryAssessmentDrafts.length === 0) {
-    inMemoryAssessmentDrafts.push({
-      id: 'asmt-fac-cst-draft-01',
-      name: 'B.Tech CST 3rd Year Mid-Term Competency Diagnostic',
-      department: dept || 'Computer Science & Technology',
-      departmentId: 'dept_cst',
-      timeLimit: 30,
-      questionsPerCompetency: 4,
-      totalQuestions: 60,
-      active: false,
-      status: 'submitted',
-      scheduledAt: new Date(Date.now() + 604800000).toISOString(),
-      startDate: new Date(Date.now() + 604800000).toISOString(),
-      endDate: new Date(Date.now() + 1209600000).toISOString(),
-      intendedGroup: '3rd Year CST - Section A & B',
-      selectedQuestionIds: [1, 2, 3, 4, 11, 12, 13, 14, 21, 22, 23, 24],
-      description: 'Mid-term diagnostic focused on Communication, Problem Solving, and Ethics.',
-      createdBy: 'Dr. Vivek Sharma',
-      facultyId: 'usr_fac_cst_viveksharma',
-      reviewNotes: null,
-      createdAt: new Date(Date.now() - 86400000).toISOString()
-    });
-  }
-}
+const inMemoryNotifications: any[] = [];
 
 /**
  * GET /api/faculty/dashboard
- * Summary metrics and recent activity scoped to faculty's department
+ * Summary metrics and recent activity scoped to faculty's department (100% dynamic)
  */
 export async function getFacultyDashboard(req: AuthenticatedRequest, res: Response): Promise<void> {
   const user = req.user!;
   const userDept = user.department || 'Computer Science & Technology';
   const isDeptHead = user.role === 'dept_head' || user.role === 'core_team' || user.role === 'system_admin';
-
-  ensureInitialFacultyData(user.name, userDept);
 
   try {
     const db = getDb();
@@ -149,9 +57,9 @@ export async function getFacultyDashboard(req: AuthenticatedRequest, res: Respon
       !a.department || a.department === userDept || a.department.includes(userDept) || userDept.includes(a.department)
     );
 
-    // Assigned students count
+    // Assigned students count (100% dynamic based on registered students and test attempts)
     const uniqueStudents = new Set(deptAttempts.map((a: any) => a.user_id || a.roll_no).filter(Boolean));
-    const assignedStudentsCount = uniqueStudents.size > 0 ? uniqueStudents.size : 142; // Seeded cohort baseline
+    const assignedStudentsCount = uniqueStudents.size;
 
     // Assessments
     const { data: dbAssessments } = await db.from('assessments').select('*');
@@ -159,12 +67,12 @@ export async function getFacultyDashboard(req: AuthenticatedRequest, res: Respon
     const deptAssessments = assessments.filter((a: any) => a.department === userDept || a.department === 'All Departments');
     
     const activeAssessmentsCount = deptAssessments.filter((a: any) => a.active).length;
-    const completedAttemptsCount = deptAttempts.length > 0 ? deptAttempts.length : 86;
+    const completedAttemptsCount = deptAttempts.length;
 
     // Average competency score
     const avgScore = deptAttempts.length > 0
       ? Math.round(deptAttempts.reduce((sum: number, a: any) => sum + Number(a.overall_score || 0), 0) / deptAttempts.length)
-      : 76;
+      : 0;
 
     // Pending reviews
     const pendingQuestions = inMemoryQuestionDrafts.filter(q => q.submissionStatus === 'submitted' && (!q.department || q.department === userDept));
@@ -328,8 +236,6 @@ export async function getFacultyAssessments(req: AuthenticatedRequest, res: Resp
   const user = req.user!;
   const userDept = user.department || 'Computer Science & Technology';
   const isDeptHead = user.role === 'dept_head' || user.role === 'core_team' || user.role === 'system_admin';
-
-  ensureInitialFacultyData(user.name, userDept);
 
   try {
     const db = getDb();
@@ -570,7 +476,6 @@ export async function getApprovedMasterQuestions(req: AuthenticatedRequest, res:
  */
 export async function getFacultyQuestionDrafts(req: AuthenticatedRequest, res: Response): Promise<void> {
   const user = req.user!;
-  ensureInitialFacultyData(user.name, user.department || 'Computer Science & Technology');
 
   const myDrafts = inMemoryQuestionDrafts.filter(q => 
     q.facultyId === user.id || q.createdBy === user.name
@@ -790,17 +695,22 @@ export async function getFacultyReports(req: AuthenticatedRequest, res: Response
       !a.department || a.department === userDept || a.department.includes(userDept) || userDept.includes(a.department)
     );
 
-    const total = deptAttempts.length > 0 ? deptAttempts.length : 86;
-    const certified = deptAttempts.length > 0 ? deptAttempts.filter((a: any) => a.is_certified).length : 71;
-    const avg = deptAttempts.length > 0 
+    const total = deptAttempts.length;
+    const certified = deptAttempts.filter((a: any) => a.is_certified).length;
+    const avg = total > 0 
       ? Math.round(deptAttempts.reduce((s: number, a: any) => s + Number(a.overall_score || 0), 0) / total)
-      : 78;
+      : 0;
+
+    const l5 = deptAttempts.filter((a: any) => Number(a.overall_score) >= 85).length;
+    const l4 = deptAttempts.filter((a: any) => Number(a.overall_score) >= 70 && Number(a.overall_score) < 85).length;
+    const l3 = deptAttempts.filter((a: any) => Number(a.overall_score) >= 65 && Number(a.overall_score) < 70).length;
+    const lNeeds = deptAttempts.filter((a: any) => Number(a.overall_score) < 65).length;
 
     const distribution = [
-      { tier: 'Level 5 – Excellent (85-100)', count: Math.round(total * 0.18), pct: '18%' },
-      { tier: 'Level 4 – Strong (70-84)', count: Math.round(total * 0.52), pct: '52%' },
-      { tier: 'Level 3 – Developing (65-69)', count: Math.round(total * 0.16), pct: '16%' },
-      { tier: 'Needs Improvement (<65)', count: Math.round(total * 0.14), pct: '14%' }
+      { tier: 'Level 5 – Excellent (85-100)', count: l5, pct: total > 0 ? `${Math.round((l5 / total) * 100)}%` : '0%' },
+      { tier: 'Level 4 – Strong (70-84)', count: l4, pct: total > 0 ? `${Math.round((l4 / total) * 100)}%` : '0%' },
+      { tier: 'Level 3 – Developing (65-69)', count: l3, pct: total > 0 ? `${Math.round((l3 / total) * 100)}%` : '0%' },
+      { tier: 'Needs Improvement (<65)', count: lNeeds, pct: total > 0 ? `${Math.round((lNeeds / total) * 100)}%` : '0%' }
     ];
 
     res.status(200).json({
@@ -809,7 +719,7 @@ export async function getFacultyReports(req: AuthenticatedRequest, res: Response
         department: userDept,
         totalAssessed: total,
         certifiedCount: certified,
-        certificationRate: `${Math.round((certified / total) * 100)}%`,
+        certificationRate: total > 0 ? `${Math.round((certified / total) * 100)}%` : '0%',
         averageScore: avg,
         distribution,
         recentAttempts: deptAttempts.slice(0, 15).map((a: any) => ({
@@ -828,10 +738,10 @@ export async function getFacultyReports(req: AuthenticatedRequest, res: Response
       success: true,
       data: {
         department: userDept,
-        totalAssessed: 86,
-        certifiedCount: 71,
-        certificationRate: '82%',
-        averageScore: 78,
+        totalAssessed: 0,
+        certifiedCount: 0,
+        certificationRate: '0%',
+        averageScore: 0,
         distribution: [],
         recentAttempts: []
       }
@@ -964,6 +874,28 @@ export async function getDepartmentOverview(req: AuthenticatedRequest, res: Resp
   const user = req.user!;
   const userDept = user.department || 'Computer Science & Technology';
 
+  let enrolledStudents = 0;
+  let attemptsCount = 0;
+  let avgDeptScore = 0;
+  let activeAssessmentsCount = 0;
+
+  try {
+    const db = getDb();
+    const { count: sCount } = await db.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
+    enrolledStudents = sCount || 0;
+
+    const { data: attempts } = await db.from('attempts').select('overall_score, department');
+    const allAttempts = attempts || [];
+    const deptAttempts = allAttempts.filter((a: any) => !a.department || a.department === userDept || a.department.includes(userDept) || userDept.includes(a.department));
+    attemptsCount = deptAttempts.length;
+    avgDeptScore = attemptsCount > 0 
+      ? Math.round(deptAttempts.reduce((s: number, a: any) => s + Number(a.overall_score || 0), 0) / attemptsCount)
+      : 0;
+
+    const { count: aCount } = await db.from('assessments').select('*', { count: 'exact', head: true }).eq('active', true);
+    activeAssessmentsCount = aCount || 0;
+  } catch (e) {}
+
   res.status(200).json({
     success: true,
     data: {
@@ -971,19 +903,15 @@ export async function getDepartmentOverview(req: AuthenticatedRequest, res: Resp
       deptCode: user.deptCode || 'CST',
       headOfDepartment: user.name,
       metrics: {
-        enrolledStudents: 384,
-        departmentFaculty: 24,
-        activeAssessments: 3,
-        overallCompletionRate: '84.2%',
-        averageDepartmentScore: 78.4,
+        enrolledStudents,
+        departmentFaculty: 1,
+        activeAssessments: activeAssessmentsCount,
+        overallCompletionRate: enrolledStudents > 0 ? `${Math.round((attemptsCount / enrolledStudents) * 100)}%` : (attemptsCount > 0 ? '100%' : '0%'),
+        averageDepartmentScore: avgDeptScore,
         pendingQuestionReviews: inMemoryQuestionDrafts.filter(q => q.submissionStatus === 'submitted').length,
         pendingAssessmentReviews: inMemoryAssessmentDrafts.filter(a => a.status === 'submitted').length
       },
-      cohorts: [
-        { name: '1st Year (Batch 2024-2028)', enrolled: 120, completed: 98, avgScore: 74 },
-        { name: '2nd Year (Batch 2023-2027)', enrolled: 134, completed: 112, avgScore: 77 },
-        { name: '3rd Year (Batch 2022-2026)', enrolled: 130, completed: 115, avgScore: 82 }
-      ]
+      cohorts: []
     }
   });
 }
@@ -995,7 +923,6 @@ export async function getDepartmentOverview(req: AuthenticatedRequest, res: Resp
 export async function getDepartmentQuestionQueue(req: AuthenticatedRequest, res: Response): Promise<void> {
   const user = req.user!;
   const userDept = user.department || 'Computer Science & Technology';
-  ensureInitialFacultyData(user.name, userDept);
 
   const queue = inMemoryQuestionDrafts.filter(q => 
     q.submissionStatus === 'submitted' && (!q.department || q.department === userDept)
@@ -1075,7 +1002,6 @@ export async function reviewDepartmentQuestion(req: AuthenticatedRequest, res: R
 export async function getDepartmentAssessmentQueue(req: AuthenticatedRequest, res: Response): Promise<void> {
   const user = req.user!;
   const userDept = user.department || 'Computer Science & Technology';
-  ensureInitialFacultyData(user.name, userDept);
 
   const queue = inMemoryAssessmentDrafts.filter(a => 
     a.status === 'submitted' && a.department === userDept
