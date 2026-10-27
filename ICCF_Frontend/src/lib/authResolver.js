@@ -31,6 +31,7 @@ export function resolveClientIdentity(email, rawName = '') {
   // 1. Leadership, Admin & Faculty Whitelist
   if (
     cleanEmail === 'vineetkumar182023@gmail.com' ||
+    cleanEmail === 'vineetkr013@gmail.com' ||
     cleanEmail === 'iccf@mruadmin.edu.in' ||
     cleanEmail === BOOTSTRAP_ADMIN_EMAIL.toLowerCase().trim() ||
     cleanEmail.startsWith('vc@') ||
@@ -38,7 +39,7 @@ export function resolveClientIdentity(email, rawName = '') {
     cleanEmail.includes('director.academics')
   ) {
     const isVc = cleanEmail.startsWith('vc@');
-    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com';
+    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com' || cleanEmail === 'vineetkr013@gmail.com';
     return {
       id: `usr_admin_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
       uid: `usr_admin_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,

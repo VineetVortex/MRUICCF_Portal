@@ -121,6 +121,7 @@ async function resolveExistingUser(email: string): Promise<User | null> {
   // 1. Check Super Admin / Leadership / Primary Admin & Faculty
   if (
     cleanEmail === 'vineetkumar182023@gmail.com' ||
+    cleanEmail === 'vineetkr013@gmail.com' ||
     cleanEmail === 'iccf@mruadmin.edu.in' ||
     cleanEmail === config.bootstrapAdminEmail.toLowerCase().trim() ||
     cleanEmail === 'admin.iccf@mru.edu.in' ||
@@ -129,7 +130,7 @@ async function resolveExistingUser(email: string): Promise<User | null> {
     cleanEmail.includes('director.academics')
   ) {
     const uid = `usr_admin_${cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`;
-    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com';
+    const isVineet = cleanEmail === 'vineetkumar182023@gmail.com' || cleanEmail === 'vineetkr013@gmail.com';
     return {
       id: uid,
       uid: uid,
