@@ -319,9 +319,6 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
         return;
       }
 
-      if (result.cooldownSeconds) {
-        setResendTimer(result.cooldownSeconds);
-      }
       setError(result.error || 'Authentication failed. Please verify your email or contact IT Support.');
       setIsLoading(false);
     } catch (err) {
@@ -658,11 +655,33 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               fontSize: '0.82rem',
               color: '#B91C1C',
               display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+              flexDirection: 'column',
+              gap: '6px'
             }}>
-              <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0 }} />
-              <span>{error}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} color="#DC2626" style={{ flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+              {!isOtpStep && email && (
+                <button
+                  type="button"
+                  onClick={() => { setIsOtpStep(true); setError(''); }}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'none',
+                    border: 'none',
+                    color: '#8B1528',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    marginTop: '2px'
+                  }}
+                >
+                  Already have a code in your inbox? Enter OTP manually →
+                </button>
+              )}
             </div>
           )}
 
@@ -725,9 +744,40 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
 
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '8px' }}>
                   Enter 6-Digit Email OTP *
                 </label>
+
+                {/* Visual 6-Digit Segmented OTP Display */}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px' }}>
+                  {[0, 1, 2, 3, 4, 5].map((index) => {
+                    const digit = otpCode[index] || '';
+                    const isCurrent = otpCode.length === index;
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          width: '46px',
+                          height: '52px',
+                          border: `2px solid ${isCurrent ? '#8B1528' : digit ? '#1C1917' : '#D6D3D1'}`,
+                          borderRadius: '12px',
+                          backgroundColor: isCurrent ? '#FFF5F5' : digit ? '#FFFFFF' : '#FAF8F5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1.4rem',
+                          fontWeight: 800,
+                          color: '#8B1528',
+                          boxShadow: isCurrent ? '0 0 0 3px rgba(139, 21, 40, 0.12)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {digit}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -740,10 +790,12 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                   <KeyRound size={18} color="#78716C" />
                   <input
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="• • • • • •"
+                    placeholder="Type or paste 6-digit code here"
                     required
                     autoFocus
                     style={{
@@ -751,12 +803,28 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                       border: 'none',
                       outline: 'none',
                       backgroundColor: 'transparent',
-                      fontSize: '1.25rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.35em',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.15em',
                       color: '#1C1917'
                     }}
                   />
+                  {otpCode && (
+                    <button
+                      type="button"
+                      onClick={() => setOtpCode('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#A8A29E',
+                        cursor: 'pointer',
+                        fontSize: '0.78rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -986,6 +1054,36 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                     </>
                   )}
                 </button>
+
+                {/* Direct Manual OTP Access */}
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!email.trim()) {
+                        setError('Please enter your university email address first.');
+                        return;
+                      }
+                      setIsOtpStep(true);
+                      setError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#8B1528',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    <KeyRound size={14} />
+                    <span>Already received verification code? Enter OTP manually →</span>
+                  </button>
+                </div>
               </form>
 
               {/* Student Registration Prompt */}

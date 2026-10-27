@@ -23,7 +23,7 @@ export default function MobileBottomNav({ currentView, setView }) {
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        padding: '8px 4px calc(10px + env(safe-area-inset-bottom, 0px)) 4px',
+        padding: '8px 4px 12px 4px',
         zIndex: 40,
         boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
       }}
