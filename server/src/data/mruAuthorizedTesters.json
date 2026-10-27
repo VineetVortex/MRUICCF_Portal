@@ -1,0 +1,93 @@
+[
+  {
+    "name": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01008",
+    "email": "anupam_kumar24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01011",
+    "email": "ayush_kumar24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Chetanya Hans",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01015",
+    "email": "chetanya_hans24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Chirag Sood",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01015",
+    "email": "chirag_sood24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Kavyansh Kaushik",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01033",
+    "email": "kavyansh_kaushik24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Nikhil Kuntal",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01045",
+    "email": "nikhil_kuntal24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Keshav Goel",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01034",
+    "email": "keshav_goel24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Vadikari Prem Chand",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01066",
+    "email": "vadikari_prem_chand24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Gaurav Jangra",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01021",
+    "email": "gaurav_24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Jatin Solanki",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01031",
+    "email": "jatin_solanki24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Chetan Sharma",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01014",
+    "email": "chetan_sharma24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Shashank Dubey",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01063",
+    "email": "shashank_dubey24@mru.ac.in",
+    "role": "student"
+  },
+  {
+    "name": "Vineet Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNo": "2k24CSUN01069",
+    "email": "vineet_kumar24@mru.ac.in",
+    "role": "student"
+  }
+]

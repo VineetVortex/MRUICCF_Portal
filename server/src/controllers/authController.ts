@@ -30,6 +30,15 @@ interface FacultyMember {
 // In-memory faculty directory index for 0ms lookups
 let facultyIndex = new Map<string, FacultyMember>();
 
+interface TesterMember {
+  name: string;
+  email: string;
+  department: string;
+  rollNo: string;
+  role: string;
+}
+let testerIndex = new Map<string, TesterMember>();
+
 interface OtpRecord {
   otp: string;
   user: User;
@@ -76,8 +85,17 @@ try {
     });
     console.log(`[Auth] Loaded ${facultyIndex.size} faculty & staff into Enterprise Role Resolver.`);
   }
+
+  const testersPath = path.resolve(process.cwd(), 'src/data/mruAuthorizedTesters.json');
+  if (fs.existsSync(testersPath)) {
+    const testers: TesterMember[] = JSON.parse(fs.readFileSync(testersPath, 'utf-8'));
+    testers.forEach(t => {
+      testerIndex.set(t.email.trim().toLowerCase(), t);
+    });
+    console.log(`[Auth] Loaded ${testerIndex.size} authorized testing roster members.`);
+  }
 } catch (err) {
-  console.warn('[Auth] Notice loading faculty directory:', err);
+  console.warn('[Auth] Notice loading directories:', err);
 }
 
 /**
@@ -189,25 +207,49 @@ async function resolveExistingUser(email: string): Promise<User | null> {
     };
   }
 
-  // 3. Check Pre-provisioned Student Cache
+  // 3. Check Pre-provisioned Authorized Testers Roster (from Google Sheet / Excel)
+  if (testerIndex.has(cleanEmail)) {
+    const t = testerIndex.get(cleanEmail)!;
+    return {
+      id: `usr_${cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      uid: `usr_${cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      email: cleanEmail,
+      name: t.name,
+      role: (t.role || 'student') as UserRole,
+      department: t.department || 'B.Tech CSE Core',
+      deptCode: 'CST',
+      rollNo: t.rollNo,
+      year: 'Batch 2024-2028 (1st Year)',
+      designation: 'Undergraduate Student',
+    };
+  }
+
+  // 3b. Check Pre-provisioned Student Cache
   if (authorizedStudentCache.has(cleanEmail)) {
     return authorizedStudentCache.get(cleanEmail)!;
   }
 
-  // 3b. Check Pattern-Matched Institutional Student Email (@mru.ac.in)
+  // 3c. Check Pattern-Matched Institutional Student Email (@mru.ac.in)
+  // Matches both 22cse0002@mru.ac.in and vineet_kumar24@mru.ac.in
   const studentMatch = cleanEmail.match(/^(\d{2})([a-zA-Z]{2,4})(\d{3,4})@mru\.ac\.in$/);
-  if (studentMatch) {
-    const yearDigits = studentMatch[1];
-    const deptDigits = studentMatch[2].toUpperCase();
+  const nameYearMatch = cleanEmail.match(/^([a-zA-Z_]+?)(\d{2})@mru\.ac\.in$/);
+
+  if (studentMatch || nameYearMatch) {
+    const yearDigits = studentMatch ? studentMatch[1] : nameYearMatch![2];
+    const deptDigits = studentMatch ? studentMatch[2].toUpperCase() : 'CST';
     const rollNo = cleanEmail.split('@')[0].toUpperCase();
-    const uid = `usr_${cleanEmail.split('@')[0]}`;
+    const uid = `usr_${cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')}`;
     const startYear = 2000 + parseInt(yearDigits, 10);
     const endYear = startYear + 4;
+    const studentName = nameYearMatch 
+      ? nameYearMatch[1].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim() 
+      : `Student (${rollNo})`;
+
     return {
       id: uid,
       uid: uid,
       email: cleanEmail,
-      name: `Student (${rollNo})`,
+      name: studentName,
       role: 'student' as UserRole,
       department: deptDigits === 'CSE' || deptDigits === 'CST' ? 'Computer Science & Technology' : deptDigits === 'ECE' ? 'Electronics & Communication' : `${deptDigits} Department`,
       deptCode: deptDigits,

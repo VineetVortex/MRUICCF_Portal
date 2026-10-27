@@ -39,6 +39,8 @@ export const USER_ROLES = {
   SYSTEM_ADMIN: 'system_admin'
 };
 
+import initialTesters from '../data/mruAuthorizedTesters.json';
+
 /**
  * Retrieves the list of authorized beta testers from the Admin's uploaded Excel sheet
  */
@@ -49,7 +51,7 @@ export function getStoredAuthorizedTesters() {
   } catch (e) {
     console.error(e);
   }
-  return [];
+  return Array.isArray(initialTesters) ? initialTesters : [];
 }
 
 /**

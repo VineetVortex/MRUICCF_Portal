@@ -1,4 +1,5 @@
 import facultyData from '../data/mruFacultyDirectory.json';
+import testerData from '../data/mruAuthorizedTesters.json';
 import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES } from './storage';
 
 const facultyMap = new Map();
@@ -6,6 +7,15 @@ if (Array.isArray(facultyData)) {
   facultyData.forEach((f) => {
     if (f.email) {
       facultyMap.set(f.email.trim().toLowerCase(), f);
+    }
+  });
+}
+
+const testerMap = new Map();
+if (Array.isArray(testerData)) {
+  testerData.forEach((t) => {
+    if (t.email) {
+      testerMap.set(t.email.trim().toLowerCase(), t);
     }
   });
 }
@@ -40,6 +50,24 @@ export function resolveClientIdentity(email, rawName = '') {
       designation: isVineet ? 'Institutional Admin & Faculty Lead' : isVc ? 'Vice Chancellor' : 'Institutional Admin / Core Team',
       rollNo: 'ADM-001',
       year: 'Faculty & Administration',
+      lastLoginAt: new Date().toISOString()
+    };
+  }
+
+  // 1b. Official Authorized Tester Roster Match (from Google Sheet / Uploaded Excel)
+  const rosterTester = testerMap.get(cleanEmail);
+  if (rosterTester) {
+    return {
+      id: `usr_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      uid: `usr_${prefix.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+      email: cleanEmail,
+      name: rosterTester.name,
+      role: rosterTester.role || USER_ROLES.STUDENT,
+      department: rosterTester.department || 'B.Tech CSE Core',
+      deptCode: 'CST',
+      designation: 'Undergraduate Student',
+      rollNo: rosterTester.rollNo,
+      year: 'Batch 2024-2028 (1st Year)',
       lastLoginAt: new Date().toISOString()
     };
   }
@@ -181,24 +209,43 @@ export function parseStudentEmail(email) {
 
   const isStudentDomain = domain === 'mru.ac.in' || domain.endsWith('.mru.ac.in');
   const isFacultyDomain = domain === 'mru.edu.in' || domain.endsWith('.mru.edu.in');
-  const rollMatch = prefix.match(/^(\d{2})([a-zA-Z]{2,4})(\d{3,5})$/);
 
-  if (!rollMatch) {
+  // Check tester map first
+  if (testerMap.has(cleanEmail)) {
+    const t = testerMap.get(cleanEmail);
     return {
-      isValidFormat: false,
+      isValidFormat: true,
+      isStudentDomain,
+      isFacultyDomain,
+      rollNo: t.rollNo || prefix.toUpperCase(),
+      deptCode: 'CST',
+      department: t.department || 'Computer Science & Technology',
+      year: 'Batch 2024-2028 (1st Year)',
+      academicYear: '1st Year'
+    };
+  }
+
+  // Pattern 1: e.g. 22cse0002
+  const rollMatch = prefix.match(/^(\d{2})([a-zA-Z]{2,4})(\d{3,5})$/);
+  // Pattern 2: e.g. vineet_kumar24 or anupam_kumar24 (first_lastYY)
+  const nameYearMatch = prefix.match(/^([a-zA-Z_]+?)(\d{2})$/);
+
+  if (!rollMatch && !nameYearMatch) {
+    return {
+      isValidFormat: isStudentDomain,
       isStudentDomain,
       isFacultyDomain,
       rollNo: prefix.toUpperCase(),
       deptCode: 'CST',
       department: 'Computer Science & Technology',
-      year: 'Batch 2022-2026',
-      academicYear: '3rd Year'
+      year: 'Batch 2024-2028',
+      academicYear: 'Undergraduate'
     };
   }
 
-  const admissionYear = 2000 + parseInt(rollMatch[1], 10);
-  const deptCode = rollMatch[2].toUpperCase();
-  const rollNo = `${rollMatch[1]}${deptCode}${rollMatch[3]}`;
+  const admissionYear = rollMatch ? (2000 + parseInt(rollMatch[1], 10)) : (2000 + parseInt(nameYearMatch[2], 10));
+  const deptCode = rollMatch ? rollMatch[2].toUpperCase() : 'CST';
+  const rollNo = rollMatch ? `${rollMatch[1]}${deptCode}${rollMatch[3]}` : prefix.toUpperCase();
 
   const deptMap = {
     CSE: 'Computer Science & Technology',
