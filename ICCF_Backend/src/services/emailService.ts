@@ -75,15 +75,30 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
   // 1. Try Standard Gmail / Google Workspace SMTP (100% Free, Zero Payment/Card Required)
   if (smtpUser && smtpPass) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
+      const isGmail = smtpHost.includes('gmail');
+      const transporter = isGmail
+        ? nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: smtpUser,
+              pass: smtpPass.replace(/\s+/g, ''),
+            },
+            tls: {
+              rejectUnauthorized: false
+            }
+          })
+        : nodemailer.createTransport({
+            host: smtpHost,
+            port: smtpPort,
+            secure: smtpPort === 465,
+            auth: {
+              user: smtpUser,
+              pass: smtpPass.replace(/\s+/g, ''),
+            },
+            tls: {
+              rejectUnauthorized: false
+            }
+          });
 
       await transporter.sendMail({
         from: `"${senderName}" <${smtpUser}>`,
@@ -92,10 +107,10 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp }: Se
         html: htmlContent,
       });
 
-      console.log(`[SMTP Mailer] Real-time OTP email delivered to ${toEmail} via ${smtpHost}`);
+      console.log(`[SMTP Mailer SUCCESS] Real-time OTP email delivered to ${toEmail} via Gmail SMTP`);
       return { success: true, message: `Real-time OTP email sent via SMTP to ${toEmail}`, provider: 'SMTP' };
     } catch (err: any) {
-      console.warn(`[SMTP Delivery Warning]`, err.message);
+      console.error(`[SMTP Delivery ERROR for ${toEmail}]:`, err.message);
     }
   }
 
