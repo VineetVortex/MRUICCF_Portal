@@ -319,7 +319,9 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
         return;
       }
 
-      setError(result.error || 'Authentication failed. Please verify your email or contact IT Support.');
+      // Even if email delivery failed or was delayed, open OTP step so user can enter code
+      setIsOtpStep(true);
+      setError(result.error || 'Authentication notice. Please enter your verification code below.');
       setIsLoading(false);
     } catch (err) {
       console.error('[Auth] Server login error:', err);

