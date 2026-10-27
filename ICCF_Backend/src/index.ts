@@ -11,6 +11,9 @@ import { testDbConnection } from './db/index.js';
 
 const app = express();
 
+// Enable trust proxy for cloud environments like Render/Heroku/AWS behind reverse proxies
+app.set('trust proxy', 1);
+
 // 1. Security & Performance Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
