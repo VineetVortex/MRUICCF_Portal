@@ -746,44 +746,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 </button>
               </div>
 
-              {/* Dev/Evaluation helper badge */}
-              {activeOtpDev && (
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  backgroundColor: '#FEF3C7',
-                  border: '1px solid #FDE68A',
-                  fontSize: '0.8rem',
-                  color: '#92400E',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={15} color="#B45309" />
-                    <span>
-                      Verification Code: <strong>{activeOtpDev}</strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOtpCode(activeOtpDev)}
-                    style={{
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      color: '#92400E',
-                      backgroundColor: '#FFFFFF',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #FCD34D',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Auto-Fill
-                  </button>
-                </div>
-              )}
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '6px' }}>
                   Enter 6-Digit Email OTP *
