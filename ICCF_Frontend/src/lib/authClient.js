@@ -8,7 +8,11 @@
  * 4. Concurrent Refresh Lock: Prevents duplicate refresh requests from racing.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const ENV_API_URL = import.meta.env.VITE_API_URL || '';
+const isProd = import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'));
+const API_BASE_URL = (isProd && (!ENV_API_URL || ENV_API_URL.includes('localhost:5000')))
+  ? 'https://mruiccf-portal.onrender.com/api'
+  : (ENV_API_URL || '/api');
 
 let _inMemoryAccessToken = null;
 let _currentUser = null;
