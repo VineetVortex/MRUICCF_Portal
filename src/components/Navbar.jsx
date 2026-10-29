@@ -320,7 +320,7 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
               Active Examination Session Locked
             </h3>
             <p style={{ fontSize: '0.88rem', color: '#64748B', lineHeight: 1.55, marginBottom: '24px' }}>
-              You are actively engaged in <strong>{examLockdown?.sessionTitle || 'an assessment session'}</strong>. To preserve academic integrity and prevent accidental score loss, tab navigation is restricted until your session is completed or paused.
+              You are actively engaged in <strong>{examLockdown?.sessionTitle || 'an assessment session'}</strong>. Navigation is disabled while an examination is in progress. Please complete or wait for the timer to expire before leaving this page.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
@@ -330,23 +330,6 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
                 style={{ padding: '11px 22px', fontSize: '0.88rem' }}
               >
                 Continue Assessment
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (examLockdown?.onSaveAndExit) {
-                    examLockdown.onSaveAndExit();
-                  }
-                  setShowLockdownModal(false);
-                  if (pendingTargetView) {
-                    setView(pendingTargetView);
-                    setPendingTargetView(null);
-                  }
-                }}
-                className="btn-secondary"
-                style={{ padding: '11px 20px', fontSize: '0.88rem', borderColor: '#DC2626', color: '#DC2626' }}
-              >
-                Save &amp; Pause Session
               </button>
             </div>
           </div>

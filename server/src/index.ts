@@ -8,6 +8,7 @@ import apiRouter from './routes/index.js';
 import { apiRateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { testDbConnection } from './db/index.js';
+import { startExpirySweeeper, stopExpirySweeeper } from './services/expirySweeeper.js';
 
 const app = express();
 
@@ -23,16 +24,14 @@ app.use(compression());
 // 2. CORS Configuration
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (config.cors.origins.includes(origin) || config.cors.origins.includes('*')) {
       return callback(null, true);
     }
-    // Allow any localhost origin in development
     if (!config.isProduction && origin.includes('localhost')) {
       return callback(null, true);
     }
-    return callback(null, true); // Permissive in dev, strict in prod
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -85,19 +84,23 @@ app.use(errorHandler);
 
 // 9. Server Initialization
 const server = app.listen(config.port, () => {
-  console.log(`================================================================`);
-  console.log(`🚀 Manav Rachna ICCF Portal Enterprise Backend Running!`);
-  console.log(`📡 URL: http://localhost:${config.port}`);
-  console.log(`🩺 Health Check: http://localhost:${config.port}/api/health`);
-  console.log(`📚 API Root: http://localhost:${config.port}/api`);
-  console.log(`🛡️ Environment: ${config.nodeEnv}`);
-  console.log(`⚡ Concurrency Target: Optimized for 60k+ DAU & High Throughput`);
-  console.log(`================================================================`);
+  console.log('================================================================');
+  console.log('Manav Rachna ICCF Portal Enterprise Backend Running!');
+  console.log('URL: http://localhost:' + config.port);
+  console.log('Health Check: http://localhost:' + config.port + '/api/health');
+  console.log('API Root: http://localhost:' + config.port + '/api');
+  console.log('Environment: ' + config.nodeEnv);
+  console.log('Concurrency Target: Optimized for 60k+ DAU and High Throughput');
+  console.log('Exam Expiry Sweeper: Running at 60s intervals');
+  console.log('================================================================');
+  // Start background sweeper after server is listening
+  startExpirySweeeper();
 });
 
 // 10. Graceful Shutdown Handlers
 const handleShutdown = (signal: string) => {
-  console.log(`\n[Server] Received ${signal}. Gracefully shutting down...`);
+  console.log('\n[Server] Received ' + signal + '. Gracefully shutting down...');
+  stopExpirySweeeper();
   server.close(() => {
     console.log('[Server] HTTP server closed cleanly.');
     process.exit(0);

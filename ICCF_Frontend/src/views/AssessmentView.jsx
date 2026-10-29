@@ -203,7 +203,9 @@ export default function AssessmentView({
   const [version, setVersion] = useState(1);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Active Assessment Timer (Dynamic per skill questionnaire, default from admin settings)
+  // Active Assessment Timer — server-anchored deadline
+  // deadlineAt holds the ISO string returned by the server; all ticking is relative to it
+  const [deadlineAt, setDeadlineAt] = useState(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(() => getSkillTimeLimit(1) * 60);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
 
@@ -226,6 +228,10 @@ export default function AssessmentView({
   const [showSkillSubmitWarningModal, setShowSkillSubmitWarningModal] = useState(false);
   const [skillSubmitTarget, setSkillSubmitTarget] = useState(null);
   const [completedSkillModalData, setCompletedSkillModalData] = useState(null);
+
+  // Pre-Exam Instruction & Strict Lockdown Briefing Modal
+  const [showExamBriefingModal, setShowExamBriefingModal] = useState(false);
+  const [pendingStartQId, setPendingStartQId] = useState(null);
 
   // Live synchronizing attempt records to display completed skills in the Hub
   const [allAttemptsList, setAllAttemptsList] = useState(() => getStoredAttempts());
@@ -279,6 +285,13 @@ export default function AssessmentView({
           const session = res.data;
           setAttemptId(session.id);
 
+          // Store the immutable server deadline for timer anchoring
+          if (session.deadlineAt) {
+            setDeadlineAt(session.deadlineAt);
+            const remaining = Math.max(0, Math.floor((new Date(session.deadlineAt).getTime() - Date.now()) / 1000));
+            setSessionTimeLeft(remaining);
+          }
+
           if (res.resumed) {
             const restoredAnswers = session.answers || {};
             setAnswers(restoredAnswers);
@@ -327,25 +340,40 @@ export default function AssessmentView({
   }, [assessmentId, currentUserId]); // eslint-disable-line
 
   /* ──────────────────────────────────────────────────────────────────────────
-     2. Active Assessment Countdown Timer
+     2. Active Assessment Countdown Timer — server-anchored when deadlineAt is known
   ────────────────────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (!activeQuestionnaireId) return;
 
     const interval = setInterval(() => {
-      setSessionTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setIsTimeExpired(true);
-          handleSingleSkillSubmit(activeQuestionnaireId, true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      let remaining;
+      if (deadlineAt) {
+        // Authoritative: always compute from server deadline
+        remaining = Math.max(0, Math.floor((new Date(deadlineAt).getTime() - Date.now()) / 1000));
+      } else {
+        // Offline fallback: pure client decrement
+        setSessionTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsTimeExpired(true);
+            handleSingleSkillSubmit(activeQuestionnaireId, true);
+            return 0;
+          }
+          return prev - 1;
+        });
+        return;
+      }
+
+      setSessionTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setIsTimeExpired(true);
+        handleSingleSkillSubmit(activeQuestionnaireId, true);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeQuestionnaireId, isTimeExpired]); // eslint-disable-line
+  }, [activeQuestionnaireId, deadlineAt, isTimeExpired]); // eslint-disable-line
 
   /* ──────────────────────────────────────────────────────────────────────────
      3. Debounced Autosave to Server + Instant Local Storage Cache
@@ -401,55 +429,91 @@ export default function AssessmentView({
   );
 
   /* ──────────────────────────────────────────────────────────────────────────
-     4. Exam Lockdown Sync with Parent App
+     4. Exam Lockdown Sync with Parent App — NO pause/exit while active
   ────────────────────────────────────────────────────────────────────────── */
-  const handleSaveAndExitToHub = useCallback(() => {
-    triggerAutosave(answers, currentIndex, flagged);
-    if (setExamLockdown) setExamLockdown(null);
-    setActiveQuestionnaireId(null);
-  }, [answers, currentIndex, flagged, triggerAutosave, setExamLockdown]);
-
   useEffect(() => {
     if (activeQuestionnaireId && setExamLockdown) {
       const activeQ = INDIVIDUAL_QUESTIONNAIRES.find(q => q.id === activeQuestionnaireId);
       setExamLockdown({
         active: true,
         sessionTitle: activeQ ? `${activeQ.name} Questionnaire` : 'Active Assessment Session',
-        onSaveAndExit: handleSaveAndExitToHub
+        // onSaveAndExit is intentionally omitted — no pause allowed in strict mode
       });
     } else if (!activeQuestionnaireId && setExamLockdown) {
       setExamLockdown(null);
     }
-  }, [activeQuestionnaireId, setExamLockdown, handleSaveAndExitToHub]);
+  }, [activeQuestionnaireId, setExamLockdown]);
 
   /* ──────────────────────────────────────────────────────────────────────────
-     5. Tab Switch / Focus Loss Integrity Event
+     5. Tab Switch / Focus Loss / Fullscreen Exit Integrity Monitor (3-Strike Rule)
   ────────────────────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (!activeQuestionnaireId) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        const newCount = focusLostCount + 1;
-        setFocusLostCount(newCount);
-        setIntegrityWarning({
-          type: 'FOCUS_LOST',
-          message: `Academic Integrity Notice: Browser tab focus was lost (${newCount} times recorded).`,
-          count: newCount,
-        });
+    const recordViolation = (type, note) => {
+      setFocusLostCount(prev => {
+        const newCount = prev + 1;
+        const remaining = Math.max(0, 3 - newCount);
 
-        if (attemptId) {
+        if (newCount >= 3) {
+          setIntegrityWarning({
+            type: 'CRITICAL_BREACH',
+            severity: 'critical',
+            message: `ACADEMIC INTEGRITY THRESHOLD EXCEEDED (Strike 3/3): Examination is terminating and submitting automatically.`,
+            count: newCount,
+          });
+          // Submit immediately on 3rd violation
+          setTimeout(() => {
+            handleSingleSkillSubmit(activeQuestionnaireId, true);
+          }, 400);
+        } else {
+          setIntegrityWarning({
+            type,
+            severity: newCount === 2 ? 'high' : 'medium',
+            message: newCount === 2
+              ? `CRITICAL WARNING (Strike 2/3): Focus or fullscreen lost! 1 more violation will immediately submit your examination.`
+              : `Academic Integrity Warning (Strike 1/3): You navigated away or exited focus. ${remaining} warnings remaining before auto-submission.`,
+            count: newCount,
+          });
+        }
+
+        if (attemptId && !attemptId.startsWith('att_local_')) {
           apiLogIntegrityEvent(attemptId, {
-            type: 'FOCUS_LOST',
-            note: `Student switched tabs or minimized window during Questionnaire #${activeQuestionnaireId}.`,
+            type,
+            note: `${note} (Strike #${newCount}) during Questionnaire #${activeQuestionnaireId}`,
+          }).then(res => {
+            if (res && res.autoSubmitted) {
+              handleSingleSkillSubmit(activeQuestionnaireId, true);
+            }
           }).catch(() => {});
         }
+
+        return newCount;
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        recordViolation('FOCUS_LOST', 'Window or browser tab focus lost');
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && activeQuestionnaireId) {
+        setIsFullscreen(false);
+        recordViolation('FULLSCREEN_EXIT', 'Exited fullscreen examination mode');
+      } else if (document.fullscreenElement) {
+        setIsFullscreen(true);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [activeQuestionnaireId, attemptId, focusLostCount]);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [activeQuestionnaireId, attemptId]); // eslint-disable-line
 
   /* ──────────────────────────────────────────────────────────────────────────
      6. Fullscreen Focus Mode
@@ -475,9 +539,15 @@ export default function AssessmentView({
     const qDef = INDIVIDUAL_QUESTIONNAIRES.find(q => q.id === qId);
     if (!qDef) return;
 
-    // Set timer based on admin-configured duration for this skill
-    const durationMinutes = getSkillTimeLimit(qId);
-    setSessionTimeLeft(durationMinutes * 60);
+    // If the server gave us an immutable deadline, compute remaining from it.
+    // Otherwise fall back to the admin-configured per-skill duration.
+    if (deadlineAt) {
+      const remaining = Math.max(0, Math.floor((new Date(deadlineAt).getTime() - Date.now()) / 1000));
+      setSessionTimeLeft(remaining);
+    } else {
+      const durationMinutes = getSkillTimeLimit(qId);
+      setSessionTimeLeft(durationMinutes * 60);
+    }
     setIsTimeExpired(false);
 
     // Find first unanswered question within this questionnaire, or start at its beginning
@@ -492,6 +562,27 @@ export default function AssessmentView({
 
     setCurrentIndex(targetIdx);
     setActiveQuestionnaireId(qId);
+  };
+
+  /* ── Strict Exam Mode Briefing Handshake ── */
+  const handleRequestStartQuestionnaire = (qId) => {
+    setPendingStartQId(qId);
+    setShowExamBriefingModal(true);
+  };
+
+  const handleConfirmStartExam = () => {
+    setShowExamBriefingModal(false);
+    if (!pendingStartQId) return;
+
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.warn('Fullscreen request note:', err);
+      });
+    }
+
+    handleOpenQuestionnaire(pendingStartQId);
   };
 
   /* ── Submit Individual Skill Questionnaire (Strict Human-Centric Single Skill Grading) ── */
@@ -564,6 +655,15 @@ export default function AssessmentView({
 
     // Save locally & broadcast
     saveAttempt(skillAttempt);
+
+    // Finalize on authoritative backend server
+    if (attemptId && !attemptId.startsWith('att_local_')) {
+      apiFinalizeAttempt(attemptId, {
+        answers: { ...answers },
+        timeSpentSeconds,
+        timeTakenFormatted: timeFormatted,
+      }).catch(err => console.warn('[AssessmentView] Finalize attempt notice:', err));
+    }
 
     // Refresh attempts list
     setAllAttemptsList(getStoredAttempts());
@@ -1306,7 +1406,7 @@ export default function AssessmentView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleOpenQuestionnaire(q.id)}
+                          onClick={() => handleRequestStartQuestionnaire(q.id)}
                           className="btn-secondary"
                           style={{ padding: '9px 12px', fontSize: '0.8rem', color: '#B45309' }}
                           title="Re-attempt this questionnaire"
@@ -1318,7 +1418,7 @@ export default function AssessmentView({
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           type="button"
-                          onClick={() => handleOpenQuestionnaire(q.id)}
+                          onClick={() => handleRequestStartQuestionnaire(q.id)}
                           className="btn-primary"
                           style={{
                             flex: 1,
@@ -1469,18 +1569,15 @@ export default function AssessmentView({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-              {/* Back to questionnaires overview */}
-              <button
-                type="button"
-                onClick={handleSaveAndExitToHub}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  background: 'none', border: 'none', color: '#8B1528',
-                  fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: 0
-                }}
-              >
-                <ArrowLeft size={14} /> All Questionnaires
-              </button>
+              {/* Strict Exam Mode Locked Notice */}
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5',
+                color: '#DC2626', fontSize: '0.74rem', fontWeight: 800,
+                padding: '3px 9px', borderRadius: '6px'
+              }}>
+                <Lock size={12} /> Strict Exam Mode Locked
+              </span>
               <span style={{ color: '#D1D5DB' }}>&gt;</span>
               <span style={{
                 backgroundColor: '#FDF2F4', color: '#8B1528',
@@ -1588,25 +1685,25 @@ export default function AssessmentView({
               <span>{formatTimer(sessionTimeLeft)}</span>
             </div>
 
-            {/* Back to Questionnaires Hub Button */}
-            <button
-              type="button"
-              onClick={handleSaveAndExitToHub}
-              className="btn-secondary"
+            {/* Academic Integrity Strike Tracker */}
+            <div
               style={{
-                padding: '8px 16px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                color: '#8B1528',
-                borderColor: '#8B1528',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                backgroundColor: focusLostCount === 0 ? '#F0FDF4' : focusLostCount === 1 ? '#FEF3C7' : '#FEE2E2',
+                border: `1px solid ${focusLostCount === 0 ? '#BBF7D0' : focusLostCount === 1 ? '#FDE68A' : '#FCA5A5'}`,
+                color: focusLostCount === 0 ? '#15803D' : focusLostCount === 1 ? '#B45309' : '#DC2626',
+                fontWeight: 800,
+                fontSize: '0.82rem'
               }}
-              title="Save all responses and return to the 15 questionnaires overview"
+              title="Academic Integrity: 3 tab switches or focus drops triggers immediate auto-submission."
             >
-              <Pause size={13} /> Back to Questionnaires
-            </button>
+              <ShieldAlert size={14} />
+              <span>Integrity: {focusLostCount}/3 Strikes</span>
+            </div>
           </div>
         </div>
 
@@ -1988,6 +2085,155 @@ export default function AssessmentView({
             >
               Got it
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Strict Exam Mode Pre-Exam Instructions & Lockdown Briefing Modal ── */}
+      {showExamBriefingModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.82)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div className="animate-pop" style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '24px',
+            maxWidth: '560px',
+            width: '100%',
+            padding: '36px 32px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            border: '2px solid #8B1528'
+          }}>
+            <div style={{
+              width: 60,
+              height: 60,
+              borderRadius: '20px',
+              backgroundColor: '#FDF2F4',
+              color: '#8B1528',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto',
+              border: '2px solid #FCA5A5'
+            }}>
+              <ShieldCheck size={32} />
+            </div>
+
+            <h3 style={{
+              fontSize: '1.4rem',
+              fontWeight: 800,
+              color: '#1C1917',
+              textAlign: 'center',
+              marginBottom: '6px'
+            }}>
+              Strict Examination Mode Instructions
+            </h3>
+
+            <p style={{
+              fontSize: '0.88rem',
+              color: '#64748B',
+              textAlign: 'center',
+              marginBottom: '22px',
+              lineHeight: 1.5
+            }}>
+              Please read the mandatory institutional integrity protocol before starting. Complete examination lockdown will be activated upon entering.
+            </p>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              backgroundColor: '#FAF8F5',
+              padding: '18px 20px',
+              borderRadius: '16px',
+              border: '1px solid #ECE7DF',
+              marginBottom: '24px',
+              fontSize: '0.86rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  backgroundColor: '#DC2626', color: '#FFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: '0.76rem', flexShrink: 0, marginTop: '2px'
+                }}>!</div>
+                <div>
+                  <strong style={{ color: '#1C1917' }}>Strict 3-Strike Violation Rule:</strong>
+                  <div style={{ color: '#4B5563', marginTop: '2px' }}>
+                    Tab switching, minimizing the browser, or losing window focus is strictly tracked. If <strong>3 warnings</strong> are registered, your examination will be <strong>automatically terminated and submitted immediately</strong>.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  backgroundColor: '#8B1528', color: '#FFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: '0.76rem', flexShrink: 0, marginTop: '2px'
+                }}>2</div>
+                <div>
+                  <strong style={{ color: '#1C1917' }}>Continuous Fullscreen Enforcement:</strong>
+                  <div style={{ color: '#4B5563', marginTop: '2px' }}>
+                    The exam runs in Fullscreen Focus Mode. Exiting fullscreen counts towards the 3-strike integrity warning limit.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  backgroundColor: '#8B1528', color: '#FFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: '0.76rem', flexShrink: 0, marginTop: '2px'
+                }}>3</div>
+                <div>
+                  <strong style={{ color: '#1C1917' }}>Server-Controlled Immutable Timer:</strong>
+                  <div style={{ color: '#4B5563', marginTop: '2px' }}>
+                    The timer cannot be paused, stopped, or extended. Refreshing the browser or reconnecting will restore your active session with the exact same server deadline.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExamBriefingModal(false);
+                  setPendingStartQId(null);
+                }}
+                className="btn-secondary"
+                style={{ padding: '11px 20px', fontSize: '0.88rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmStartExam}
+                className="btn-primary"
+                style={{
+                  padding: '11px 24px',
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  backgroundColor: '#8B1528',
+                  borderColor: '#8B1528',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>I Understand &amp; Enter Exam</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -120,7 +120,7 @@ export interface AttemptResult {
   competencyScores: CompetencyScore[];
   strengths: CompetencyScore[];
   developmentAreas: CompetencyScore[];
-  status?: 'in_progress' | 'submitted' | 'auto_submitted' | 'expired' | 'abandoned';
+  status?: 'active' | 'submitted' | 'expired';
   startedAt?: string;
   deadlineAt?: string;
   durationSeconds?: number;
