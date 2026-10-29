@@ -445,12 +445,56 @@ export default function AssessmentView({
   }, [activeQuestionnaireId, setExamLockdown]);
 
   /* ──────────────────────────────────────────────────────────────────────────
-     5. Tab Switch / Focus Loss / Fullscreen Exit Integrity Monitor (3-Strike Rule)
+     5. Strict Lockdown Integrity Monitor (ESC Blocker & Mobile Instant Submit)
   ────────────────────────────────────────────────────────────────────────── */
+  const isMobileDevice = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.innerWidth <= 768) ||
+      (navigator.maxTouchPoints > 1 && window.innerWidth <= 1024)
+    );
+  }, []);
+
+  const requestFullscreenLockdown = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      }
+      // Engage Keyboard Lock API for Escape key on supported Chromium browsers
+      if (navigator.keyboard && typeof navigator.keyboard.lock === 'function') {
+        await navigator.keyboard.lock(['Escape']);
+      }
+    } catch (err) {
+      console.warn('Fullscreen/keyboard lock notice:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (!activeQuestionnaireId) return;
 
     const recordViolation = (type, note) => {
+      // Mobile app screen switch: instant final submission!
+      if (isMobileDevice()) {
+        setIntegrityWarning({
+          type: 'MOBILE_LOCKDOWN_BREACH',
+          severity: 'critical',
+          message: 'MOBILE LOCKDOWN VIOLATION: Screen switch or app backgrounding detected. Examination is automatically submitted.',
+          count: 3,
+        });
+
+        if (attemptId && !attemptId.startsWith('att_local_')) {
+          apiLogIntegrityEvent(attemptId, {
+            type: 'MOBILE_APP_SWITCH',
+            note: 'Mobile app screen switch detected. Immediate auto-submit triggered.',
+          }).catch(() => {});
+        }
+
+        handleSingleSkillSubmit(activeQuestionnaireId, true);
+        return;
+      }
+
       setFocusLostCount(prev => {
         const newCount = prev + 1;
         const remaining = Math.max(0, 3 - newCount);
@@ -471,8 +515,8 @@ export default function AssessmentView({
             type,
             severity: newCount === 2 ? 'high' : 'medium',
             message: newCount === 2
-              ? `CRITICAL WARNING (Strike 2/3): Focus or fullscreen lost! 1 more violation will immediately submit your examination.`
-              : `Academic Integrity Warning (Strike 1/3): You navigated away or exited focus. ${remaining} warnings remaining before auto-submission.`,
+              ? `CRITICAL WARNING (Strike 2/3): ESC pressed or window focus lost! 1 more violation will immediately submit your examination.`
+              : `Academic Integrity Warning (Strike 1/3): You pressed ESC or navigated away. ${remaining} warnings remaining before auto-submission.`,
             count: newCount,
           });
         }
@@ -494,42 +538,57 @@ export default function AssessmentView({
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        recordViolation('FOCUS_LOST', 'Window or browser tab focus lost');
+        recordViolation('FOCUS_LOST', 'Window, tab or app focus lost');
       }
     };
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && activeQuestionnaireId) {
         setIsFullscreen(false);
-        recordViolation('FULLSCREEN_EXIT', 'Exited fullscreen examination mode');
+        recordViolation('FULLSCREEN_EXIT', 'Exited fullscreen examination mode via ESC or window resize');
       } else if (document.fullscreenElement) {
         setIsFullscreen(true);
+        if (navigator.keyboard && typeof navigator.keyboard.lock === 'function') {
+          navigator.keyboard.lock(['Escape']).catch(() => {});
+        }
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.code === 'Escape' || e.keyCode === 27) {
+        // Prevent default browser exit if possible and keep focus
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (isMobileDevice() && activeQuestionnaireId) {
+        recordViolation('MOBILE_APP_SWITCH', 'Switched application or pulled notification shade');
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('blur', handleWindowBlur);
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('blur', handleWindowBlur);
+      if (navigator.keyboard && typeof navigator.keyboard.unlock === 'function') {
+        navigator.keyboard.unlock();
+      }
     };
-  }, [activeQuestionnaireId, attemptId]); // eslint-disable-line
+  }, [activeQuestionnaireId, attemptId, isMobileDevice]); // eslint-disable-line
 
   /* ──────────────────────────────────────────────────────────────────────────
-     6. Fullscreen Focus Mode
+     6. Strict Fullscreen Toggle (Cannot voluntary exit during exam)
   ────────────────────────────────────────────────────────────────────────── */
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true);
-      }).catch(err => {
-        console.warn('Fullscreen request denied:', err);
-      });
-    } else {
-      document.exitFullscreen().then(() => {
-        setIsFullscreen(false);
-      }).catch(() => {});
-    }
+    requestFullscreenLockdown();
   };
 
   /* ──────────────────────────────────────────────────────────────────────────
@@ -574,14 +633,7 @@ export default function AssessmentView({
     setShowExamBriefingModal(false);
     if (!pendingStartQId) return;
 
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true);
-      }).catch(err => {
-        console.warn('Fullscreen request note:', err);
-      });
-    }
-
+    requestFullscreenLockdown();
     handleOpenQuestionnaire(pendingStartQId);
   };
 
@@ -1651,16 +1703,40 @@ export default function AssessmentView({
               <Zap size={12} color="#16A34A" /> Pass All
             </button>
 
-            {/* Fullscreen Button */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.73rem', gap: '5px' }}
-            >
-              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              <span>{isFullscreen ? 'Exit Focus' : 'Focus'}</span>
-            </button>
+            {/* Fullscreen Status Indicator */}
+            {isFullscreen ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '5px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  color: '#15803D',
+                  fontSize: '0.74rem',
+                  fontWeight: 800
+                }}
+              >
+                <Lock size={12} /> Fullscreen Locked
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={requestFullscreenLockdown}
+                className="btn-primary"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.74rem',
+                  gap: '5px',
+                  backgroundColor: '#DC2626',
+                  borderColor: '#DC2626'
+                }}
+              >
+                <Maximize2 size={12} /> Re-Enter Fullscreen
+              </button>
+            )}
 
             {/* Keyboard Shortcuts */}
             <button
@@ -2234,6 +2310,98 @@ export default function AssessmentView({
                 <ArrowRight size={16} />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mandatory Fullscreen Lockdown Enforcement Overlay (Triggers on ESC exit) ── */}
+      {activeQuestionnaireId && !isFullscreen && !completedSkillModalData && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.94)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '24px'
+        }}>
+          <div className="animate-pop" style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '24px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '36px 32px',
+            textAlign: 'center',
+            border: '3px solid #DC2626',
+            boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.4)'
+          }}>
+            <div style={{
+              width: 68,
+              height: 68,
+              borderRadius: '50%',
+              backgroundColor: '#FEE2E2',
+              color: '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <Lock size={36} />
+            </div>
+
+            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1C1917', marginBottom: '8px' }}>
+              Fullscreen Lockdown Enforced
+            </h3>
+
+            <p style={{ fontSize: '0.88rem', color: '#64748B', lineHeight: 1.6, marginBottom: '20px' }}>
+              You pressed <strong>ESC</strong> or exited Fullscreen Mode. In accordance with institutional examination policy, questions are hidden until you re-enter Fullscreen Focus Mode.
+            </p>
+
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FCA5A5',
+              borderRadius: '12px',
+              color: '#DC2626',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              marginBottom: '24px'
+            }}>
+              Academic Integrity: {focusLostCount}/3 Strikes Recorded
+              {focusLostCount >= 2 ? (
+                <div style={{ fontSize: '0.78rem', marginTop: '4px', color: '#991B1B', fontWeight: 800 }}>
+                  CRITICAL: Next infraction will automatically terminate and submit your examination.
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.78rem', marginTop: '4px', color: '#991B1B' }}>
+                  {Math.max(0, 3 - focusLostCount)} warning(s) remaining before automatic submission.
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={requestFullscreenLockdown}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '0.98rem',
+                fontWeight: 800,
+                backgroundColor: '#DC2626',
+                borderColor: '#DC2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)'
+              }}
+            >
+              <Maximize2 size={18} />
+              <span>Re-Enter Fullscreen Lockdown Immediately</span>
+            </button>
           </div>
         </div>
       )}
