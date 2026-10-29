@@ -69,7 +69,7 @@ import {
   getSkillTimeLimit
 } from '../lib/storage';
 import * as XLSX from 'xlsx';
-import { Mail, Send, ToggleLeft, ToggleRight, UserCheck, UserX, FileDown } from 'lucide-react';
+import { Mail, Send, ToggleLeft, ToggleRight, UserCheck, UserX, FileDown, KeyRound, History, X } from 'lucide-react';
 import {
   apiImportTesterRoster,
   apiGetTesterRoster,

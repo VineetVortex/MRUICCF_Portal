@@ -77,3 +77,4 @@ ALTER TABLE public.tester_access_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Deny direct public access to tester_roster" ON public.tester_roster FOR ALL USING (false);
 CREATE POLICY "Deny direct public access to tester_invitations" ON public.tester_invitations FOR ALL USING (false);
 CREATE POLICY "Deny direct public access to tester_access_events" ON public.tester_access_events FOR ALL USING (false);
+

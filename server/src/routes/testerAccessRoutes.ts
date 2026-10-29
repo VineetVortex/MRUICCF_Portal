@@ -49,3 +49,4 @@ router.post('/redeem', authenticate, redeemTesterInvitation);
 router.get('/status', authenticate, getTesterAccessStatus);
 
 export default router;
+
