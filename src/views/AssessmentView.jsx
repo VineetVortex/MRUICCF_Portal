@@ -5,7 +5,7 @@ import {
   RotateCcw, BookOpen, ShieldAlert, Wifi, WifiOff, Maximize2, Minimize2,
   RefreshCw, CheckCircle, Lock, Unlock, Play, Pause, Award, ArrowRight,
   FileText, BarChart2, ShieldCheck, Layers, Users, Sparkle, ListFilter,
-  CheckCircle as CheckCircleIcon, ArrowLeft
+  CheckCircle as CheckCircleIcon, ArrowLeft, Shuffle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
@@ -1313,8 +1313,31 @@ export default function AssessmentView({
               </p>
             </div>
 
-            {/* Category Pills Filter */}
+            {/* Category Pills Filter + Random Quick Trigger */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleStartRandomQuestionnaire}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  border: '1.5px solid #8B1528',
+                  backgroundColor: '#8B1528',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 8px rgba(139, 21, 40, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Randomly pick and take any questionnaire right now"
+              >
+                <Sparkles size={13} />
+                <span>🎲 Random Questionnaire</span>
+              </button>
               {categoriesList.map(cat => (
                 <button
                   key={cat}
@@ -1471,20 +1494,28 @@ export default function AssessmentView({
 
                     {q.pastAttempt ? (
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {q.pastAttempt.isCertified && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onCompleteAttempt) onCompleteAttempt(q.pastAttempt, 'certificate');
-                              else setView('certificate');
-                            }}
-                            className="btn-primary"
-                            style={{ flex: '1 1 auto', padding: '9px 12px', fontSize: '0.8rem', gap: '5px', backgroundColor: '#8B1528' }}
-                          >
-                            <Award size={13} />
-                            <span>Certificate</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRequestStartQuestionnaire(q.id)}
+                          className="btn-primary"
+                          style={{
+                            flex: '1 1 auto',
+                            padding: '9px 14px',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            gap: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#8B1528',
+                            border: 'none',
+                            color: '#FFFFFF'
+                          }}
+                          title="Re-attempt this questionnaire anytime"
+                        >
+                          <RotateCcw size={14} />
+                          <span>Retake Questionnaire</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -1492,20 +1523,27 @@ export default function AssessmentView({
                             else setView('results');
                           }}
                           className="btn-secondary"
-                          style={{ flex: '1 1 auto', padding: '9px 12px', fontSize: '0.8rem', gap: '5px' }}
+                          style={{ padding: '9px 12px', fontSize: '0.8rem', gap: '5px' }}
+                          title="View Scorecard"
                         >
                           <FileText size={13} />
                           <span>Scorecard</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRequestStartQuestionnaire(q.id)}
-                          className="btn-secondary"
-                          style={{ padding: '9px 12px', fontSize: '0.8rem', color: '#B45309' }}
-                          title="Re-attempt this questionnaire"
-                        >
-                          <RotateCcw size={13} />
-                        </button>
+                        {q.pastAttempt.isCertified && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onCompleteAttempt) onCompleteAttempt(q.pastAttempt, 'certificate');
+                              else setView('certificate');
+                            }}
+                            className="btn-secondary"
+                            style={{ padding: '9px 12px', fontSize: '0.8rem', gap: '5px', color: '#047857', borderColor: '#A7F3D0' }}
+                            title="View Official Certificate"
+                          >
+                            <Award size={13} />
+                            <span>Certificate</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -1744,6 +1782,27 @@ export default function AssessmentView({
               <Zap size={12} color="#16A34A" /> Pass All
             </button>
 
+            {/* Jump to Random Question */}
+            <button
+              type="button"
+              onClick={() => {
+                const unans = [];
+                for (let i = activeQDef.startIndex; i < activeQDef.endIndex; i++) {
+                  if (i !== currentIndex && answers[questionsList[i]?.id] === undefined) unans.push(i);
+                }
+                const pool = unans.length > 0 ? unans : Array.from({ length: activeQDef.endIndex - activeQDef.startIndex }, (_, idx) => activeQDef.startIndex + idx).filter(i => i !== currentIndex);
+                if (pool.length > 0) {
+                  const rndIdx = pool[Math.floor(Math.random() * pool.length)];
+                  handleNavigate(rndIdx);
+                }
+              }}
+              className="btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '0.73rem', gap: '4px', color: '#8B1528' }}
+              title="Jump to a random question in this questionnaire"
+            >
+              <Shuffle size={12} color="#8B1528" /> Random Item
+            </button>
+
             {/* Fullscreen Status Indicator */}
             {isFullscreen ? (
               <span
@@ -1941,7 +2000,28 @@ export default function AssessmentView({
                 <span>Previous Question</span>
               </button>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const unans = [];
+                    for (let i = activeQDef.startIndex; i < activeQDef.endIndex; i++) {
+                      if (i !== currentIndex && answers[questionsList[i]?.id] === undefined) unans.push(i);
+                    }
+                    const pool = unans.length > 0 ? unans : Array.from({ length: activeQDef.endIndex - activeQDef.startIndex }, (_, idx) => activeQDef.startIndex + idx).filter(i => i !== currentIndex);
+                    if (pool.length > 0) {
+                      const rndIdx = pool[Math.floor(Math.random() * pool.length)];
+                      handleNavigate(rndIdx);
+                    }
+                  }}
+                  className="btn-secondary"
+                  style={{ padding: '11px 16px', fontSize: '0.88rem', gap: '6px', color: '#8B1528' }}
+                  title="Jump to a random question within this questionnaire"
+                >
+                  <Shuffle size={15} />
+                  <span>Random Item</span>
+                </button>
+
                 {/* Submit Individual Skill Questionnaire Button */}
                 <button
                   type="button"
@@ -1993,6 +2073,37 @@ export default function AssessmentView({
             <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1C1917', marginBottom: '12px' }}>
               Questionnaire Navigator
             </h3>
+
+            {/* Quick Switch to Random Questionnaire */}
+            <button
+              type="button"
+              onClick={() => {
+                const others = INDIVIDUAL_QUESTIONNAIRES.filter(q => q.id !== activeQuestionnaireId);
+                const randomPick = others[Math.floor(Math.random() * others.length)];
+                if (randomPick) handleOpenQuestionnaire(randomPick.id);
+              }}
+              style={{
+                marginBottom: '12px',
+                width: '100%',
+                padding: '7px 12px',
+                borderRadius: '8px',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                backgroundColor: '#FAF8F5',
+                border: '1px solid #ECE7DF',
+                color: '#8B1528',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              title="Jump to another questionnaire at random"
+            >
+              <Sparkles size={12} color="#8B1528" />
+              <span>Switch to Random Questionnaire</span>
+            </button>
 
             {/* Active Questionnaire Selection Tabs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', maxHeight: '220px', overflowY: 'auto' }}>
