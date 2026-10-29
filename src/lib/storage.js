@@ -27,6 +27,59 @@ const STORAGE_KEY_ATTEMPTS = 'mr_iccf_attempts_v1';
 const STORAGE_KEY_USER = 'mr_iccf_current_user_v1';
 const STORAGE_KEY_AUTHORIZED_TESTERS = 'mr_iccf_authorized_testers_v1';
 const STORAGE_KEY_STRICT_TESTING_MODE = 'mr_iccf_strict_testing_mode_v1';
+const STORAGE_KEY_QUESTIONNAIRE_SETTINGS = 'mr_iccf_questionnaire_settings_v1';
+
+/**
+ * Retrieves the admin-configured time limits for individual skill questionnaires.
+ * Default: 10 minutes per 10-question questionnaire.
+ */
+export function getQuestionnaireSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_QUESTIONNAIRE_SETTINGS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.durationMinutes === 'number') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return {
+    durationMinutes: 10, // Default 10 minutes per individual skill questionnaire (10 items)
+    perSkillDuration: {}
+  };
+}
+
+/**
+ * Saves and broadcasts questionnaire timing configuration across all active tabs/sessions.
+ */
+export function saveQuestionnaireSettings(settings) {
+  try {
+    localStorage.setItem(STORAGE_KEY_QUESTIONNAIRE_SETTINGS, JSON.stringify(settings));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('iccf_timings_updated', { detail: settings }));
+      try {
+        const bc = new BroadcastChannel('iccf_timings_channel');
+        bc.postMessage({ type: 'timings_updated', settings });
+        bc.close();
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/**
+ * Resolves the active time limit in minutes for a specific skill questionnaire (1..15).
+ */
+export function getSkillTimeLimit(skillId) {
+  const settings = getQuestionnaireSettings();
+  if (skillId && settings.perSkillDuration && settings.perSkillDuration[skillId]) {
+    return Number(settings.perSkillDuration[skillId]) || settings.durationMinutes || 10;
+  }
+  return Number(settings.durationMinutes) || 10;
+}
 
 // Bootstrap admin email specified for platform administration (assigns core_team automatically)
 export const BOOTSTRAP_ADMIN_EMAIL = 'iccf@mruadmin.edu.in';
@@ -571,6 +624,14 @@ export async function deleteAttempt(attemptId, adminName = 'Admin') {
   const updated = list.filter(a => a.id !== attemptId);
   try {
     localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('iccf_attempts_updated', { detail: { attempts: updated } }));
+      try {
+        const bc = new BroadcastChannel('iccf_attempts_channel');
+        bc.postMessage({ type: 'attempts_updated', attempts: updated });
+        bc.close();
+      } catch (e) {}
+    }
   } catch (e) {}
   logEvent(LOG_CATEGORIES.ADMIN_ACTION_LOG, `Deleted attempt #${attemptId}`, { attemptId, adminName });
   return updated;
@@ -605,6 +666,14 @@ export function getStoredAttempts() {
 export function saveAttempts(attempts) {
   try {
     localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(attempts));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('iccf_attempts_updated', { detail: { attempts } }));
+      try {
+        const bc = new BroadcastChannel('iccf_attempts_channel');
+        bc.postMessage({ type: 'attempts_updated', attempts });
+        bc.close();
+      } catch (e) {}
+    }
   } catch (e) {
     console.error(e);
   }
@@ -668,6 +737,14 @@ export async function saveAttempt(attempt) {
   const updated = [attempt, ...current.filter(a => a.id !== attempt.id)];
   try {
     localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('iccf_attempts_updated', { detail: { attempt, attempts: updated } }));
+      try {
+        const bc = new BroadcastChannel('iccf_attempts_channel');
+        bc.postMessage({ type: 'attempts_updated', attempt, attempts: updated });
+        bc.close();
+      } catch (e) {}
+    }
   } catch (e) {
     console.error(e);
   }

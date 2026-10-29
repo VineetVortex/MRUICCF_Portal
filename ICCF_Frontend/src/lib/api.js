@@ -211,6 +211,65 @@ export async function apiCreateAssessment(assessmentData) {
 /**
  * Attempts & Scoring API (Calculated and verified server-side!)
  */
+export async function apiStartOrResumeAttempt(payload) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/attempts/start`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
+export async function apiGetActiveAttempt(userId = null) {
+  try {
+    const url = userId ? `${API_BASE_URL}/attempts/active?userId=${encodeURIComponent(userId)}` : `${API_BASE_URL}/attempts/active`;
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
+export async function apiAutosaveAttempt(attemptId, payload) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/autosave`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
+export async function apiLogIntegrityEvent(attemptId, eventData) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/integrity-event`, {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
+export async function apiFinalizeAttempt(attemptId, payload) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/finalize`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, fallback: true, error: err.message };
+  }
+}
+
 export async function apiSubmitAttempt(attemptPayload) {
   try {
     const res = await authFetch(`${API_BASE_URL}/attempts`, {

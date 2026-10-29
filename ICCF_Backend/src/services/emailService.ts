@@ -1,7 +1,6 @@
 /**
  * Manav Rachna ICCF Portal - Enterprise Email Delivery Service
- * Primary: Resend API (works on Render/Vercel - no SMTP port issues)
- * Fallback: Nodemailer SMTP (for local development)
+ * Delivery: Nodemailer SMTP
  */
 
 import nodemailer, { Transporter } from 'nodemailer';
@@ -255,8 +254,7 @@ Manav Rachna University - Sector 43, Aravalli Hills, Faridabad, Haryana`;
 }
 
 /**
- * Sends OTP via Resend API (primary - works on Render/cloud hosting).
- * Falls back to SMTP if Resend is not configured.
+ * Sends OTP via Nodemailer SMTP.
  */
 export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requestId }: SendOtpOptions): Promise<EmailDeliveryResult> {
   const cleanEmail = toEmail ? toEmail.trim().toLowerCase() : '';
@@ -274,76 +272,6 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requ
 
   const { html, text } = buildOtpEmailContent(studentName, otp);
   const subject = `🔐 ${otp} is your Manav Rachna ICCF Login Code`;
-  const fromAddress = `${config.smtp.fromName} <onboarding@resend.dev>`;
-
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey && resendApiKey.trim().startsWith('re_')) {
-    try {
-      // Dynamic import to avoid breaking if resend package not installed
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendApiKey.trim());
-
-      // Resend free tier requires sending from 'onboarding@resend.dev' unless a custom domain is verified
-      const senderAddress = process.env.RESEND_FROM || `${config.smtp.fromName || 'Manav Rachna ICCF Portal'} <onboarding@resend.dev>`;
-
-      let firstAttempt = await resend.emails.send({
-        from: senderAddress,
-        to: cleanEmail,
-        subject,
-        html,
-        text,
-      });
-
-      let data = firstAttempt.data;
-      let error = firstAttempt.error;
-
-      // Resend Free Tier restriction: can only send to registered account owner without domain verification
-      if (error && (error.message?.includes('You can only send testing emails to your own email address') || error.message?.includes('verify a domain'))) {
-        const match = error.message.match(/\(([^)]+)\)/);
-        const ownerEmail = match ? match[1].trim() : 'vineetkumar182023@gmail.com';
-        
-        console.warn(`${logPrefix} [Resend Testing Routing] Recipient ${masked} is unverified on Resend. Forwarding test OTP code to registered admin mailbox: ${maskEmail(ownerEmail)}`);
-        
-        const testingSubject = `🔐 [${cleanEmail}] ${otp} is your Manav Rachna ICCF Login Code`;
-        const testingHtml = `
-          <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.88rem; color: #92400E;">
-            <strong>🧪 Institutional Testing Notification:</strong><br>
-            A login OTP was requested for <strong>${cleanEmail}</strong> (${studentName}).<br>
-            Because Resend domain verification is in progress, testing codes are delivered to your verified admin account: <strong>${ownerEmail}</strong>.
-          </div>
-          ${html}
-        `;
-
-        const secondAttempt = await resend.emails.send({
-          from: senderAddress,
-          to: ownerEmail,
-          subject: testingSubject,
-          html: testingHtml,
-          text: `[Test OTP for ${cleanEmail}]: ${otp}\n\n${text}`,
-        });
-
-        data = secondAttempt.data;
-        error = secondAttempt.error;
-      }
-
-      if (error) {
-        console.error(`${logPrefix} [Resend ERROR for ${masked}]:`, error.message || error);
-        // Fall through to SMTP
-      } else {
-        console.log(`${logPrefix} [Resend SUCCESS] OTP email sent to ${masked} (ID: ${data?.id})`);
-        return {
-          success: true,
-          message: `Verification code successfully dispatched to ${cleanEmail}.`,
-          messageId: data?.id,
-          provider: 'Resend',
-          requestId,
-        };
-      }
-    } catch (err: any) {
-      console.warn(`${logPrefix} [Resend WARN] Falling back to SMTP: ${err.message}`);
-      // Fall through to SMTP
-    }
-  }
 
   // ─── FALLBACK: Nodemailer SMTP ────────────────────────────────────────────
   const validation = validateSmtpConfig();

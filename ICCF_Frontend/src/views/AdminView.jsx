@@ -59,7 +59,10 @@ import {
   getStoredAuthorizedTesters,
   saveAuthorizedTesters,
   isStrictTestingModeEnabled,
-  setStrictTestingMode
+  setStrictTestingMode,
+  getQuestionnaireSettings,
+  saveQuestionnaireSettings,
+  getSkillTimeLimit
 } from '../lib/storage';
 import * as XLSX from 'xlsx';
 import { Mail, Send, ToggleLeft, ToggleRight, UserCheck, UserX, FileDown } from 'lucide-react';
@@ -81,7 +84,8 @@ export default function AdminView({
   userRole, 
   setUserRole, 
   onAssessmentsUpdated, 
-  setActiveAttempt 
+  setActiveAttempt,
+  setActiveAssessment
 }) {
   // Tabs: 'overview' | 'moderation' | 'assessments' | 'roster'
   const [activeTab, setActiveTab] = useState(() => {
@@ -142,6 +146,31 @@ export default function AdminView({
   const [newAssmtTimeLimit, setNewAssmtTimeLimit] = useState(45);
   const [newAssmtQuestionsPerComp, setNewAssmtQuestionsPerComp] = useState(10);
 
+  // Questionnaire Timings state (for individual human-centric skill questionnaires)
+  const [questionnaireTimingSettings, setQuestionnaireTimingSettings] = useState(() => getQuestionnaireSettings());
+  const [timingSavedFeedback, setTimingSavedFeedback] = useState(false);
+  const [showPerSkillOverrides, setShowPerSkillOverrides] = useState(false);
+
+  const handleSaveQuestionnaireTiming = (newDuration, perSkillMap = null) => {
+    const updated = {
+      ...questionnaireTimingSettings,
+      durationMinutes: Math.max(1, Number(newDuration) || 10),
+      perSkillDuration: perSkillMap !== null ? perSkillMap : (questionnaireTimingSettings.perSkillDuration || {})
+    };
+    setQuestionnaireTimingSettings(updated);
+    saveQuestionnaireSettings(updated);
+    setTimingSavedFeedback(true);
+    setTimeout(() => setTimingSavedFeedback(false), 3000);
+  };
+
+  const handleUpdateSingleSkillTiming = (skillId, minutes) => {
+    const updatedPerSkill = {
+      ...(questionnaireTimingSettings.perSkillDuration || {}),
+      [skillId]: Math.max(1, Number(minutes) || questionnaireTimingSettings.durationMinutes || 10)
+    };
+    handleSaveQuestionnaireTiming(questionnaireTimingSettings.durationMinutes, updatedPerSkill);
+  };
+
   // Roster / Student Attempts state
   const [attempts, setAttempts] = useState(() => getStoredAttempts());
   const [rosterSearch, setRosterSearch] = useState('');
@@ -158,6 +187,29 @@ export default function AdminView({
   // Seed Data notification state
   const [seedNotification, setSeedNotification] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSyncingAttempts, setIsSyncingAttempts] = useState(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState(() => new Date());
+
+  // Concurrently fetch and sync student attempts across clients & storage
+  const syncLiveAttempts = async (showSpinner = false) => {
+    if (showSpinner) setIsSyncingAttempts(true);
+    try {
+      // 1. Immediately read latest from localStorage (instant in-browser updates)
+      const localAtt = getStoredAttempts();
+      if (localAtt) setAttempts(localAtt);
+
+      // 2. Fetch live attempts from SaaS backend / database
+      const liveAtt = await fetchLiveAttempts();
+      if (liveAtt && liveAtt.length > 0) {
+        setAttempts(liveAtt);
+      }
+      setLastSyncedTime(new Date());
+    } catch (err) {
+      console.warn('[AdminView] Live synchronization warning:', err);
+    } finally {
+      if (showSpinner) setIsSyncingAttempts(false);
+    }
+  };
 
   // Initial live synchronization from database
   useEffect(() => {
@@ -177,6 +229,50 @@ export default function AdminView({
         setCompetenciesList(res.data);
       }
     });
+  }, []);
+
+  // Live Concurrent Synchronization: Cross-tab events, BroadcastChannel, and background polling
+  useEffect(() => {
+    // Cross-tab storage change listener
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === 'iccf_student_attempts' || e.key.includes('attempt')) {
+        setAttempts(getStoredAttempts());
+        setLastSyncedTime(new Date());
+      }
+    };
+
+    // Custom in-window event (dispatched when student completes questionnaires)
+    const handleCustomUpdate = () => {
+      setAttempts(getStoredAttempts());
+      setLastSyncedTime(new Date());
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('iccf_attempts_updated', handleCustomUpdate);
+
+    // Cross-tab broadcast channel
+    let bc = null;
+    try {
+      bc = new BroadcastChannel('iccf_attempts_channel');
+      bc.onmessage = () => {
+        setAttempts(getStoredAttempts());
+        setLastSyncedTime(new Date());
+      };
+    } catch (e) {}
+
+    // Background live polling interval (every 8 seconds)
+    const pollInterval = setInterval(() => {
+      syncLiveAttempts(false);
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('iccf_attempts_updated', handleCustomUpdate);
+      if (bc) {
+        try { bc.close(); } catch (e) {}
+      }
+      clearInterval(pollInterval);
+    };
   }, []);
 
   // Refresh data periodically on tab change
@@ -877,6 +973,42 @@ export default function AdminView({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+
+            {/* Live Concurrency Status */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '9999px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              backgroundColor: '#ECFDF5',
+              color: '#065F46',
+              border: '1px solid #A7F3D0'
+            }} title={`Real-time concurrent auto-sync active (every 8s). Last synced: ${lastSyncedTime.toLocaleTimeString()}`}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }} />
+              <span>Live Sync Active</span>
+            </div>
+
+            <button
+              onClick={() => syncLiveAttempts(true)}
+              disabled={isSyncingAttempts}
+              className="btn-secondary"
+              style={{
+                padding: '8px 14px',
+                fontSize: '0.82rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: isSyncingAttempts ? 'not-allowed' : 'pointer',
+                backgroundColor: isSyncingAttempts ? '#F3F4F6' : '#FFFFFF'
+              }}
+              title="Force instant sync with student portal questionnaire attempts"
+            >
+              <RefreshCw size={14} style={{ animation: isSyncingAttempts ? 'spin 1s linear infinite' : 'none' }} />
+              <span>{isSyncingAttempts ? 'Syncing...' : 'Sync Live Data'}</span>
+            </button>
 
             <div style={{
               display: 'inline-flex',
@@ -2405,6 +2537,201 @@ export default function AdminView({
               </button>
             </div>
 
+            {/* ── Questionnaire Timing & Duration Management Panel ── */}
+            <div className="mr-card" style={{
+              padding: '24px',
+              marginBottom: '20px',
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid #FDE68A',
+              boxShadow: '0 4px 16px rgba(217, 119, 6, 0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '12px',
+                    backgroundColor: '#FEF3C7',
+                    color: '#B45309',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
+                      Individual Skill Questionnaire Timing Management
+                    </h4>
+                    <p style={{ fontSize: '0.82rem', color: '#78716C', margin: '3px 0 0 0' }}>
+                      Configure the time duration allotted to students for taking each individual 10-question human-centric skill questionnaire.
+                    </p>
+                  </div>
+                </div>
+
+                {timingSavedFeedback && (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    backgroundColor: '#DCFCE7',
+                    border: '1px solid #86EFAC',
+                    color: '#15803D',
+                    fontSize: '0.8rem',
+                    fontWeight: 700
+                  }}>
+                    <CheckCircle2 size={14} />
+                    <span>Timing updated live across student sessions!</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Timing Controls */}
+              <div style={{
+                backgroundColor: '#FAF8F5',
+                borderRadius: '14px',
+                padding: '16px 20px',
+                border: '1px solid #EAE5DC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <div>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#44403C', display: 'block', marginBottom: '4px' }}>
+                      Default Duration per Skill Questionnaire:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="number"
+                        min="2"
+                        max="120"
+                        value={questionnaireTimingSettings.durationMinutes || 10}
+                        onChange={(e) => handleSaveQuestionnaireTiming(e.target.value)}
+                        style={{
+                          width: '80px',
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #D6D3D1',
+                          fontSize: '0.92rem',
+                          fontWeight: 700,
+                          color: '#8B1528',
+                          textAlign: 'center'
+                        }}
+                      />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1C1917' }}>Minutes</span>
+                    </div>
+                  </div>
+
+                  {/* Preset quick buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', alignSelf: 'flex-end' }}>
+                    {[5, 10, 15, 20, 30].map(mins => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => handleSaveQuestionnaireTiming(mins)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: (questionnaireTimingSettings.durationMinutes === mins) ? '1.5px solid #8B1528' : '1px solid #D6D3D1',
+                          backgroundColor: (questionnaireTimingSettings.durationMinutes === mins) ? '#FDF2F4' : '#FFFFFF',
+                          color: (questionnaireTimingSettings.durationMinutes === mins) ? '#8B1528' : '#57534E'
+                        }}
+                      >
+                        {mins} Mins{mins === 10 ? ' (Standard)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPerSkillOverrides(!showPerSkillOverrides)}
+                    className="btn-secondary"
+                    style={{ padding: '7px 14px', fontSize: '0.8rem', gap: '6px' }}
+                  >
+                    <Sliders size={14} />
+                    <span>{showPerSkillOverrides ? 'Hide Per-Skill Overrides' : 'Customize per Skill'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSaveQuestionnaireTiming(questionnaireTimingSettings.durationMinutes)}
+                    className="btn-primary"
+                    style={{ padding: '7px 18px', fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#047857' }}
+                  >
+                    <Check size={14} />
+                    <span>Save Timing</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Per-skill Duration Overrides Table */}
+              {showPerSkillOverrides && (
+                <div style={{ marginTop: '16px', borderTop: '1px solid #EAE5DC', paddingTop: '16px' }}>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#1C1917', marginBottom: '8px' }}>
+                    Per-Skill Custom Duration Allocations (10 Questions Each):
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '10px',
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    padding: '4px'
+                  }}>
+                    {COMPETENCIES_DATA.map((comp) => {
+                      const curMins = questionnaireTimingSettings.perSkillDuration?.[comp.id] || questionnaireTimingSettings.durationMinutes || 10;
+                      return (
+                        <div key={comp.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          backgroundColor: '#FAF8F5',
+                          borderRadius: '8px',
+                          border: '1px solid #ECE7DF',
+                          fontSize: '0.82rem'
+                        }}>
+                          <span style={{ fontWeight: 700, color: '#1C1917' }}>
+                            {comp.id}. {comp.name}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <input
+                              type="number"
+                              min="2"
+                              max="120"
+                              value={curMins}
+                              onChange={(e) => handleUpdateSingleSkillTiming(comp.id, e.target.value)}
+                              style={{
+                                width: '56px',
+                                padding: '4px 6px',
+                                borderRadius: '6px',
+                                border: '1px solid #D6D3D1',
+                                textAlign: 'center',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                color: '#8B1528'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.74rem', color: '#78716C' }}>mins</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {assessments.map((assmt) => (
                 <div key={assmt.id} className="mr-card" style={{ padding: '24px' }}>
@@ -2459,7 +2786,10 @@ export default function AdminView({
                       </button>
 
                       <button
-                        onClick={() => setView('assessment')}
+                        onClick={() => {
+                          if (setActiveAssessment) setActiveAssessment(assmt);
+                          setView('assessment');
+                        }}
                         style={{
                           padding: '6px 12px',
                           borderRadius: '8px',
@@ -2510,8 +2840,12 @@ export default function AdminView({
                       <strong style={{ color: '#1C1917' }}>{assmt.department}</strong>
                     </div>
                     <div>
-                      <span style={{ color: '#78716C', display: 'block' }}>Time Limit:</span>
+                      <span style={{ color: '#78716C', display: 'block' }}>Composite Time Limit:</span>
                       <strong style={{ color: '#8B1528' }}>{assmt.timeLimit} minutes</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#78716C', display: 'block' }}>Per-Skill Questionnaire Duration:</span>
+                      <strong style={{ color: '#059669' }}>{questionnaireTimingSettings.durationMinutes || 10} minutes (10 items)</strong>
                     </div>
                     <div>
                       <span style={{ color: '#78716C', display: 'block' }}>Items per Competency:</span>
@@ -3278,7 +3612,7 @@ export default function AdminView({
                   </div>
 
                   <p style={{ color: '#57534E', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: '20px' }}>
-                    Invitation emails have been prepared for all authorized testers. If live SMTP or Resend API key is configured on the backend, invitations are dispatched immediately. You can also open your default desktop email client with all testers pre-filled in <strong>BCC</strong> for instant 1-click delivery.
+                    Invitation emails have been prepared for all authorized testers. If live institutional SMTP is configured on the backend, invitations are dispatched immediately. You can also open your default desktop email client with all testers pre-filled in <strong>BCC</strong> for instant 1-click delivery.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 const STORAGE_KEY_URL = 'mr_supabase_url';
 const STORAGE_KEY_KEY = 'mr_supabase_anon_key';
 
+const DEFAULT_URL = 'https://jmzwuciamqedlskleitr.supabase.co';
+const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imptend1Y2lhbXFlZGxza2xlaXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MzM5MTMsImV4cCI6MjEwNzMwOTkxM30.JThvFqkVxKEPBcBeUqA4KuYiEVbVL9c0uEixN8g5JYc';
+
 export function getSupabaseCredentials() {
   const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -11,8 +14,8 @@ export function getSupabaseCredentials() {
   const localUrl = typeof window !== 'undefined' ? (localStorage.getItem(STORAGE_KEY_URL) || '') : '';
   const localKey = typeof window !== 'undefined' ? (localStorage.getItem(STORAGE_KEY_KEY) || '') : '';
 
-  const url = (localUrl || envUrl).trim();
-  const anonKey = (localKey || envKey).trim();
+  const url = (localUrl || envUrl || DEFAULT_URL).trim();
+  const anonKey = (localKey || envKey || DEFAULT_KEY).trim();
 
   return { url, anonKey };
 }

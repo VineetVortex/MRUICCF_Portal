@@ -80,6 +80,7 @@ export function calculateAssessmentAttempt(
   competencies: Competency[]
 ) {
   let totalRawPoints = 0;
+  let totalAnsweredCount = 0;
   let totalPossiblePoints = 0;
 
   const competencyMap: Record<number, {
@@ -131,25 +132,21 @@ export function calculateAssessmentAttempt(
       item.rawPoints += adjusted;
       item.answeredCount += 1;
       totalRawPoints += adjusted;
-    } else {
-      // Default unanswered to neutral (3)
-      const adjusted = getAdjustedQuestionScore(3, q.isReverse);
-      item.rawPoints += adjusted;
-      totalRawPoints += adjusted;
+      totalAnsweredCount += 1;
     }
+    // Unanswered questions strictly receive 0 points (never defaulting to 3 / 50%)
 
     totalPossiblePoints += 5;
   });
 
   const competencyScores: CompetencyScore[] = Object.values(competencyMap).map((c) => {
-    // Master Questionnaire Normalization Formula: (obtainedScore - 10) / 40 * 100 for 10-item competency
-    let score: number;
-    if (c.questionCount === 10) {
-      score = Math.max(0, Math.min(100, Math.round(((c.rawPoints - 10) / 40) * 100)));
-    } else {
-      const minPoints = c.questionCount * 1;
-      const pointRange = (c.questionCount * 5) - minPoints;
-      score = pointRange > 0 ? Math.max(0, Math.min(100, Math.round(((c.rawPoints - minPoints) / pointRange) * 100))) : 0;
+    let score = 0;
+    if (c.answeredCount > 0 && c.questionCount > 0) {
+      const earnedPoints = Math.max(0, c.rawPoints - c.answeredCount);
+      const maxEarnablePoints = c.questionCount * 4;
+      score = maxEarnablePoints > 0
+        ? Math.max(0, Math.min(100, Math.round((earnedPoints / maxEarnablePoints) * 100)))
+        : 0;
     }
 
     const levelInfo = getCompetencyLevel(score);
@@ -171,17 +168,14 @@ export function calculateAssessmentAttempt(
     };
   });
 
-  // Master Questionnaire Normalization Formula for 15 competencies: (totalScore - 150) / 600 * 100
-  let compositeScore: number;
+  let compositeScore = 0.0;
   const totalQuestions = questions.length;
-  if (totalQuestions === 150) {
-    compositeScore = Number(Math.max(0, Math.min(100, ((totalRawPoints - 150) / 600) * 100)).toFixed(1));
-  } else {
-    const minRaw = totalQuestions * 1;
-    const rawRange = (totalQuestions * 5) - minRaw;
-    compositeScore = rawRange > 0
-      ? Number(Math.max(0, Math.min(100, ((totalRawPoints - minRaw) / rawRange) * 100)).toFixed(1))
-      : 0;
+  if (totalAnsweredCount > 0 && totalQuestions > 0) {
+    const totalEarnedPoints = Math.max(0, totalRawPoints - totalAnsweredCount);
+    const totalMaxEarnablePoints = totalQuestions * 4;
+    compositeScore = totalMaxEarnablePoints > 0
+      ? Number(Math.max(0, Math.min(100, (totalEarnedPoints / totalMaxEarnablePoints) * 100)).toFixed(1))
+      : 0.0;
   }
 
   const isCertified = compositeScore >= config.scoring.certificationThreshold;

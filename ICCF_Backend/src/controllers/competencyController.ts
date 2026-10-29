@@ -3,21 +3,21 @@ import { getDb } from '../db/index.js';
 import { Competency, Department } from '../types/index.js';
 
 export const BASELINE_COMPETENCIES: Competency[] = [
-  { id: 1, name: 'Communication', description: 'Articulates technical and interpersonal ideas with clarity and stakeholder empathy.', univAvg: 74 },
-  { id: 2, name: 'Active Listening', description: 'Listens attentively without interrupting, assimilating feedback productively.', univAvg: 71 },
-  { id: 3, name: 'Teamwork & Collaboration', description: 'Cooperates effectively across cross-functional groups towards shared project milestones.', univAvg: 75 },
-  { id: 4, name: 'Empathy', description: 'Demonstrates situational awareness and sensitivity toward diverse team perspectives.', univAvg: 70 },
-  { id: 5, name: 'Adaptability', description: 'Navigates shifting requirements, novel frameworks, and uncertain engineering parameters.', univAvg: 73 },
-  { id: 6, name: 'Problem-Solving & Critical Thinking', description: 'Deconstructs complex constraints into structured, evidence-based solutions.', univAvg: 76 },
-  { id: 7, name: 'Conflict Resolution & Negotiation', description: 'Mediates interpersonal friction constructively to reach mutually agreeable compromises.', univAvg: 68 },
-  { id: 8, name: 'Self-Awareness', description: 'Recognizes personal limitations, emotional triggers, and cognitive blindspots.', univAvg: 72 },
-  { id: 9, name: 'Emotional Regulation', description: 'Maintains composure, focus, and constructive demeanor under acute pressure.', univAvg: 69 },
-  { id: 10, name: 'Stress Management', description: 'Applies proactive resilience strategies to prevent burnout in high-demand environments.', univAvg: 67 },
-  { id: 11, name: 'Ethics', description: 'Maintains uncompromising professional integrity and accountability.', univAvg: 79 },
-  { id: 12, name: 'Integrity', description: 'Upholds commitments, transparency, and academic rigor in all collaborative contexts.', univAvg: 78 },
-  { id: 13, name: 'Professional Etiquette', description: 'Adheres to high standards of workplace civility, promptness, and professional communication.', univAvg: 74 },
-  { id: 14, name: 'Time Management', description: 'Prioritizes workflows efficiently to meet academic and industry deadlines consistently.', univAvg: 71 },
-  { id: 15, name: 'Lifelong Learning', description: 'Actively acquires novel technical competencies and seeks continuous self-improvement.', univAvg: 77 },
+  { id: 1, name: 'Communication', description: 'Expresses ideas clearly, listens attentively, and adapts communication based on audience.', univAvg: 72 },
+  { id: 2, name: 'Planning & Organizing', description: 'Sets clear goals, prioritizes tasks based on urgency and importance, and creates realistic timelines.', univAvg: 68 },
+  { id: 3, name: 'Professionalism', description: 'Maintains punctuality, demonstrates respectful behavior, and upholds workplace decorum.', univAvg: 75 },
+  { id: 4, name: 'Resource Management', description: 'Uses resources efficiently, avoids wastage, and optimizes material and time utilization.', univAvg: 65 },
+  { id: 5, name: 'Building Trust', description: 'Keeps promises, maintains confidentiality, admits mistakes openly, and acts with consistency.', univAvg: 74 },
+  { id: 6, name: 'Collaboration & Teamwork', description: 'Contributes actively to team tasks, respects diverse viewpoints, and values collective success.', univAvg: 76 },
+  { id: 7, name: 'Conflict Resolution & Negotiation', description: 'Remains calm during disagreements, focuses on solutions, and aims for win-win outcomes.', univAvg: 63 },
+  { id: 8, name: 'Emotional Intelligence', description: 'Recognizes emotional cues in self and others, managing emotions effectively under pressure.', univAvg: 71 },
+  { id: 9, name: 'Empathy', description: 'Understands situations from others’ perspectives, showing genuine concern and active support.', univAvg: 74 },
+  { id: 10, name: 'Inclusion', description: 'Encourages participation, respects diverse backgrounds, and challenges biased behavior.', univAvg: 77 },
+  { id: 11, name: 'Ethics', description: 'Acts with integrity, follows guidelines sincerely, and reports unethical practices.', univAvg: 79 },
+  { id: 12, name: 'Accountability', description: 'Takes ownership of actions, delivers on commitments, and corrects mistakes without blame-shifting.', univAvg: 70 },
+  { id: 13, name: 'Lifelong Learning', description: 'Actively seeks opportunities to acquire new skills and stays updated with developments.', univAvg: 73 },
+  { id: 14, name: 'Resilience', description: 'Remains optimistic during setbacks, recovers quickly, and adapts effectively to challenges.', univAvg: 67 },
+  { id: 15, name: 'Self-Management', description: 'Regulates behavior in professional settings, manages distractions, and sustains performance standards.', univAvg: 64 },
 ];
 
 export const BASELINE_DEPARTMENTS: Department[] = [

@@ -111,7 +111,7 @@ export interface AttemptResult {
   assessmentId: string;
   assessmentName: string;
   overallScore: number;
-  certificationStatus: 'Certified' | 'Needs Improvement';
+  certificationStatus: 'Certified' | 'Needs Improvement' | 'In Progress' | 'Expired';
   isCertified: boolean;
   timeSpentSeconds?: number;
   timeTakenFormatted?: string;
@@ -120,6 +120,19 @@ export interface AttemptResult {
   competencyScores: CompetencyScore[];
   strengths: CompetencyScore[];
   developmentAreas: CompetencyScore[];
+  status?: 'in_progress' | 'submitted' | 'auto_submitted' | 'expired' | 'abandoned';
+  startedAt?: string;
+  deadlineAt?: string;
+  durationSeconds?: number;
+  answeredQuestionIds?: (string | number)[];
+  flaggedQuestionIds?: (string | number)[];
+  currentIndex?: number;
+  focusLostCount?: number;
+  integrityEvents?: Array<{ type: string; timestamp: string; note?: string }>;
+  lastSavedAt?: string;
+  lastActivityAt?: string;
+  submittedAt?: string;
+  version?: number;
   createdAt?: string;
 }
 

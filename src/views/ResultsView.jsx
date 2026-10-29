@@ -71,14 +71,17 @@ function generateRecommendations(competencyScores) {
   return recs;
 }
 
-export default function ResultsView({ setView, currentUser, activeAttempt, setActiveAttempt }) {
+export default function ResultsView({ setView, currentUser, activeAttempt, setActiveAttempt, userRole }) {
   const [activeTab, setActiveTab] = useState('scores');
   const [sortCol, setSortCol] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
 
   const allAttempts = getStoredAttempts();
   const currentUserId = currentUser?.uid || currentUser?.id;
-  const userAttempts = currentUserId ? allAttempts.filter(a => a.userId === currentUserId) : allAttempts;
+  const isStudentRole = userRole === 'student' || (!userRole && currentUser?.role === 'student');
+  const userAttempts = (isStudentRole && currentUserId)
+    ? allAttempts.filter(a => a.userId === currentUserId || a.rollNo === currentUser?.rollNo)
+    : allAttempts;
 
   const attempt = activeAttempt || userAttempts[0] || null;
   const overallScore = attempt ? Math.round(Number(attempt.overallScore) || 0) : 0;
@@ -136,6 +139,42 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
     <div style={{ padding: '24px 0 60px 0' }} className="animate-fade-in">
       <div className="container">
 
+        {/* Admin/Faculty Inspector Return Banner */}
+        {!isStudentRole && (
+          <div style={{
+            backgroundColor: '#F8FAFC',
+            borderRadius: '16px',
+            padding: '12px 20px',
+            border: '1px solid #E2E8F0',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: '#0284C7'
+              }} />
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155' }}>
+                Scorecard Inspection Mode: Reviewing candidate record for {attempt?.studentName || 'Student'} ({attempt?.rollNo || 'N/A'})
+              </span>
+            </div>
+            <button
+              onClick={() => setView(userRole === 'faculty' || userRole === 'dept_head' ? 'faculty' : 'admin')}
+              className="btn-secondary"
+              style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: 700 }}
+            >
+              ← Return to {userRole === 'faculty' || userRole === 'dept_head' ? 'Faculty Portal' : 'Admin Console'}
+            </button>
+          </div>
+        )}
+
         {/* ── Top Banner ───────────────────────────────────────────────── */}
         <div style={{
           backgroundColor: '#FFFFFF', borderRadius: '24px', padding: '24px 32px',
@@ -149,7 +188,9 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1C1917', lineHeight: 1.2 }}>{attempt.assessmentName}</h1>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1C1917', lineHeight: 1.2 }}>
+                  {attempt.assessmentName || (attempt.skillName ? `${attempt.skillName} Competency Assessment` : 'Human-Centric Skills Assessment')}
+                </h1>
                 <span style={{
                   padding: '3px 12px', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: 700,
                   backgroundColor: isCertified ? '#DCFCE7' : '#FEF3C7',
@@ -158,9 +199,36 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
                 }}>
                   {isCertified ? '✓ Certified (Passed)' : `⚠ Threshold Not Met (<${CERTIFICATION_THRESHOLD}%)`}
                 </span>
+
+                {userAttempts.length > 1 && (
+                  <select
+                    value={attempt?.id || ''}
+                    onChange={(e) => {
+                      const match = userAttempts.find(a => a.id === e.target.value);
+                      if (match && setActiveAttempt) setActiveAttempt(match);
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      color: '#8B1528',
+                      backgroundColor: '#FAF8F5',
+                      border: '1.5px solid #E2D9C8',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {userAttempts.map((att, i) => (
+                      <option key={att.id || i} value={att.id}>
+                        Switch Scorecard: {att.skillName ? `${att.skillName} (${att.overallScore}%)` : (att.assessmentName || `Attempt #${userAttempts.length - i}`)}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <p style={{ color: '#78716C', fontSize: '0.88rem', marginTop: '4px' }}>
-                <strong>{currentUser?.name || attempt?.studentName}</strong> ({currentUser?.rollNo || attempt?.rollNo || 'N/A'}) •{' '}
+                <strong>{attempt?.studentName || currentUser?.name}</strong> ({attempt?.rollNo || currentUser?.rollNo || 'N/A'}) •{' '}
                 {new Date(attempt.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -169,7 +237,7 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
             {isCertified && (
               <button
                 onClick={() => {
-                  const certId = attempt?.certificate?.certificateNumber || `MRU-ICCF-${currentUser?.rollNo || attempt?.rollNo || 'GEN'}-${new Date(attempt.timestamp).getFullYear()}`;
+                  const certId = attempt?.certificate?.certificateNumber || `MRU-ICCF-${attempt?.rollNo || currentUser?.rollNo || 'GEN'}-${new Date(attempt.timestamp).getFullYear()}`;
                   const verifyUrl = `${window.location.origin}/?verify=${encodeURIComponent(certId)}`;
                   const title = encodeURIComponent(`Institutional Competency Certification (ICCF) - ${levelInfo?.level || 'Proficient'}`);
                   const org = encodeURIComponent('Manav Rachna Educational Institutions');
@@ -226,12 +294,12 @@ export default function ResultsView({ setView, currentUser, activeAttempt, setAc
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
               {[
-                { label: 'Evaluated Dimensions', value: '15 Human-Centric Skills' },
+                { label: 'Evaluated Dimensions', value: attempt.skillName ? `1 Human-Centric Dimension: ${attempt.skillName}` : '15 Human-Centric Skills' },
                 { label: 'Time Taken',           value: attempt.timeTakenFormatted || '—' },
                 { label: 'Pass Threshold',        value: `${CERTIFICATION_THRESHOLD.toFixed(2)}%`, highlight: '#16A34A' },
                 { label: 'Certification Status',  value: isCertified ? 'Passed (Certificate Issued)' : 'Uncertified', highlight: isCertified ? '#16A34A' : '#DC2626' },
-                { label: 'Total Items',           value: `${attempt.totalQuestions || '—'}` },
-                { label: 'Verification ID',       value: `MRU-ICCF-${currentUser?.rollNo || attempt?.rollNo || 'GEN'}-${new Date(attempt.timestamp).getFullYear()}`, mono: true },
+                { label: 'Total Items',           value: `${attempt.totalQuestions || '10'}` },
+                { label: 'Verification ID',       value: attempt.certificate?.certificateNumber || `MRU-ICCF-${attempt.skillCode ? attempt.skillCode + '-' : ''}${currentUser?.rollNo || attempt?.rollNo || 'GEN'}-${new Date(attempt.timestamp).getFullYear()}`, mono: true },
               ].map(({ label, value, highlight, mono }) => (
                 <div key={label} style={label === 'Verification ID' ? { gridColumn: 'span 2' } : {}}>
                   <span style={{ color: '#78716C', display: 'block', fontSize: '0.75rem' }}>{label}</span>

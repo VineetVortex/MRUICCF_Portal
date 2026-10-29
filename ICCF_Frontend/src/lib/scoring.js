@@ -93,6 +93,7 @@ export function getAdjustedQuestionScore(answerValue, isReverse = false) {
  */
 export function calculateAttemptResults(questions, answers, competencies) {
   let totalRawPoints = 0;
+  let totalAnsweredCount = 0;
   let totalPossiblePoints = 0;
 
   // Group questions by competency
@@ -134,25 +135,26 @@ export function calculateAttemptResults(questions, answers, competencies) {
       item.rawPoints += adjusted;
       item.answeredCount += 1;
       totalRawPoints += adjusted;
-    } else {
-      // Default unanswered to neutral (3)
-      const adjusted = getAdjustedQuestionScore(3, q.isReverse);
-      item.rawPoints += adjusted;
-      totalRawPoints += adjusted;
+      totalAnsweredCount += 1;
     }
+    // Note: Unanswered questions receive 0 raw points and 0 answeredCount (never defaulting to 3/50%)
 
     totalPossiblePoints += 5;
   });
 
-  // Calculate per-competency score using Master Questionnaire Normalization: (raw - 10) / 40 * 100
+  // Calculate per-competency score using Master Questionnaire Normalization:
+  // Base raw score ranges from 1 to 5 per answered item.
+  // Net earned proficiency points = rawPoints - answeredCount (0 to 4 per item).
+  // Normalized score (%) = (earnedPoints / (questionCount * 4)) * 100.
+  // If answeredCount === 0, score is strictly 0%.
   const competencyScores = Object.values(competencyMap).map((c) => {
-    let score;
-    if (c.questionCount === 10) {
-      score = Math.max(0, Math.min(100, Math.round(((c.rawPoints - 10) / 40) * 100)));
-    } else {
-      const minPoints = c.questionCount * 1;
-      const pointRange = (c.questionCount * 5) - minPoints;
-      score = pointRange > 0 ? Math.max(0, Math.min(100, Math.round(((c.rawPoints - minPoints) / pointRange) * 100))) : 0;
+    let score = 0;
+    if (c.answeredCount > 0 && c.questionCount > 0) {
+      const earnedPoints = Math.max(0, c.rawPoints - c.answeredCount);
+      const maxEarnablePoints = c.questionCount * 4;
+      score = maxEarnablePoints > 0
+        ? Math.max(0, Math.min(100, Math.round((earnedPoints / maxEarnablePoints) * 100)))
+        : 0;
     }
 
     const levelInfo = getCompetencyLevel(score);
@@ -171,20 +173,21 @@ export function calculateAttemptResults(questions, answers, competencies) {
       levelColor: levelInfo.color,
       levelBg: levelInfo.bg,
       trend: score >= c.univAvg ? 'up' : 'down',
+      answeredCount: c.answeredCount,
+      questionCount: c.questionCount,
     };
   });
 
-  // Composite score across all competencies using Master Questionnaire Normalization: (total - 150) / 600 * 100
-  let compositeScore;
+  // Composite score across all competencies:
+  // If totalAnsweredCount === 0, compositeScore is strictly 0.0 (never 50%).
+  let compositeScore = 0.0;
   const totalQuestions = questions.length;
-  if (totalQuestions === 150) {
-    compositeScore = Number(Math.max(0, Math.min(100, ((totalRawPoints - 150) / 600) * 100)).toFixed(1));
-  } else {
-    const minRaw = totalQuestions * 1;
-    const rawRange = (totalQuestions * 5) - minRaw;
-    compositeScore = rawRange > 0 
-      ? Number(Math.max(0, Math.min(100, ((totalRawPoints - minRaw) / rawRange) * 100)).toFixed(1))
-      : 0;
+  if (totalAnsweredCount > 0 && totalQuestions > 0) {
+    const totalEarnedPoints = Math.max(0, totalRawPoints - totalAnsweredCount);
+    const totalMaxEarnablePoints = totalQuestions * 4;
+    compositeScore = totalMaxEarnablePoints > 0
+      ? Number(Math.max(0, Math.min(100, (totalEarnedPoints / totalMaxEarnablePoints) * 100)).toFixed(1))
+      : 0.0;
   }
 
   const isCertified = compositeScore >= CERTIFICATION_THRESHOLD;
@@ -198,11 +201,100 @@ export function calculateAttemptResults(questions, answers, competencies) {
     compositeScore,
     totalRawPoints,
     totalPossiblePoints,
+    totalAnsweredCount,
+    totalQuestions,
     isCertified,
     certificationStatus: isCertified ? 'Certified' : 'Needs Improvement',
     competencyScores,
     strengths,
     developmentAreas,
+    evaluatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Evaluates an individual human-centric skill questionnaire (10 questions).
+ * Strictly guarantees 0% score when 0 questions are answered.
+ *
+ * @param {Array} skillQuestions - 10 questions for this specific competency
+ * @param {Object} answers - Map of { [questionId]: answerValue (1-5) }
+ * @param {Object} competency - Competency metadata ({ id, name, description, univAvg })
+ * @returns {Object} Full single-skill evaluation result
+ */
+export function calculateSingleSkillResults(skillQuestions, answers, competency) {
+  let rawPoints = 0;
+  let answeredCount = 0;
+  const questionCount = skillQuestions.length;
+
+  const questionBreakdown = skillQuestions.map((q) => {
+    const rawVal = answers[q.id];
+    const isAnswered = rawVal !== undefined && rawVal !== null;
+    let adjusted = null;
+    if (isAnswered) {
+      adjusted = getAdjustedQuestionScore(rawVal, q.isReverse);
+      rawPoints += adjusted;
+      answeredCount += 1;
+    }
+    return {
+      id: q.id,
+      text: q.text,
+      isReverse: Boolean(q.isReverse),
+      rawAnswer: isAnswered ? rawVal : null,
+      adjustedScore: adjusted,
+      isAnswered,
+    };
+  });
+
+  // Calculate score (0-100%). Strictly 0 if answeredCount === 0.
+  let score = 0;
+  if (answeredCount > 0 && questionCount > 0) {
+    const earnedPoints = Math.max(0, rawPoints - answeredCount);
+    const maxEarnablePoints = questionCount * 4;
+    score = maxEarnablePoints > 0
+      ? Math.max(0, Math.min(100, Math.round((earnedPoints / maxEarnablePoints) * 100)))
+      : 0;
+  }
+
+  const levelInfo = getCompetencyLevel(score);
+  const isCertified = score >= CERTIFICATION_THRESHOLD;
+
+  const competencyScore = {
+    id: competency?.id || 1,
+    name: competency?.name || 'Competency',
+    score,
+    rawPoints,
+    maxPoints: questionCount * 5,
+    univAvg: competency?.univAvg || 72,
+    level: levelInfo.level,
+    levelName: levelInfo.name,
+    levelLabel: levelInfo.label,
+    marks: levelInfo.marks,
+    descriptor: levelInfo.descriptor,
+    levelColor: levelInfo.color,
+    levelBg: levelInfo.bg,
+    trend: score >= (competency?.univAvg || 72) ? 'up' : 'down',
+    answeredCount,
+    questionCount,
+  };
+
+  return {
+    skillId: competency?.id || 1,
+    skillName: competency?.name || 'Competency',
+    score,
+    overallScore: score,
+    compositeScore: score,
+    rawPoints,
+    answeredCount,
+    totalQuestions: questionCount,
+    level: levelInfo.level,
+    levelInfo,
+    isCertified,
+    certificationStatus: isCertified ? 'Certified' : 'Needs Improvement',
+    competencyScore,
+    competencyScores: [competencyScore],
+    strengths: [competencyScore],
+    developmentAreas: isCertified ? [] : [competencyScore],
+    questionBreakdown,
     evaluatedAt: new Date().toISOString(),
   };
 }

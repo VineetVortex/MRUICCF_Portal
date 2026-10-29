@@ -24,6 +24,8 @@ import {
   handleSeedData 
 } from './lib/storage';
 import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from './lib/authClient';
+import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
+import { resolveClientIdentity } from './lib/authResolver';
 
 export default function App() {
   // Public Credential Verification via QR scan (?verify=MRU-ICCF-...)
@@ -43,6 +45,14 @@ export default function App() {
   // Roles: 'student' | 'dept_head' | 'core_team' | 'system_admin'
   const userRole = currentUserData?.role || USER_ROLES.STUDENT;
 
+  const setUserRole = (newRole) => {
+    if (currentUserData) {
+      const updated = { ...currentUserData, role: newRole };
+      setUserData(updated);
+      setCurrentUser(updated);
+    }
+  };
+
   // Active Assessment configuration state
   const [assessments, setAssessments] = useState(() => getStoredAssessments());
   const [activeAssessment, setActiveAssessment] = useState(() => assessments[0] || null);
@@ -50,21 +60,105 @@ export default function App() {
   // Latest attempt / results state for dynamic scoring & certificates
   const [activeAttempt, setActiveAttempt] = useState(() => getLatestAttempt(currentUserData?.uid || currentUserData?.id));
 
-  // Auto-restore session from HttpOnly refresh cookie on application load
+  // Exam Lockdown state for strict academic integrity enforcement
+  const [examLockdown, setExamLockdown] = useState(null);
+
+  // Auto-restore session from Supabase OAuth / Auth and HttpOnly refresh cookie
   useEffect(() => {
+    // 1. Supabase Native Auth & Google OAuth session listener
+    const sb = getSupabaseClient();
+    let sbSubscription = null;
+
+    if (sb && isSupabaseConfigured()) {
+      const processSupabaseSession = async (session) => {
+        if (!session?.user?.email) return;
+        const authUser = session.user;
+        const userEmail = authUser.email.toLowerCase();
+
+        // Check if user already exists in public.users or database
+        let userProfile = null;
+        try {
+          const { data: dbUser } = await sb.from('users').select('*').eq('email', userEmail).maybeSingle();
+          if (dbUser) {
+            userProfile = {
+              id: dbUser.id || authUser.id,
+              uid: dbUser.id || authUser.id,
+              email: dbUser.email,
+              name: dbUser.name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || userEmail.split('@')[0],
+              role: dbUser.role || 'student',
+              department: dbUser.department || 'Computer Science & Technology',
+              deptCode: dbUser.dept_code || 'CST',
+              year: dbUser.year || '3rd Year',
+              rollNo: dbUser.roll_no || '2024-CST-042',
+              designation: dbUser.designation,
+              avatar: dbUser.avatar || authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '',
+              lastLoginAt: new Date().toISOString()
+            };
+          }
+        } catch (err) {
+          console.warn('[Supabase Profile Sync Fetch Notice]:', err);
+        }
+
+        if (!userProfile) {
+          userProfile = resolveClientIdentity(userEmail, authUser.user_metadata?.full_name || authUser.user_metadata?.name);
+          userProfile.id = authUser.id;
+          userProfile.uid = authUser.id;
+          if (authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture) {
+            userProfile.avatar = authUser.user_metadata.avatar_url || authUser.user_metadata.picture;
+          }
+
+          // Upsert to public.users for persistence
+          try {
+            await sb.from('users').upsert({
+              id: authUser.id,
+              email: userEmail,
+              name: userProfile.name,
+              role: userProfile.role,
+              department: userProfile.department,
+              dept_code: userProfile.deptCode,
+              year: userProfile.year,
+              roll_no: userProfile.rollNo,
+              avatar: userProfile.avatar || '',
+              is_active: true,
+              last_login_at: new Date().toISOString()
+            }, { onConflict: 'email' });
+          } catch (upsertErr) {
+            console.warn('[Supabase Profile Upsert Notice]:', upsertErr);
+          }
+        }
+
+        handleUserAuthenticated(userProfile);
+      };
+
+      // Check current session immediately (for Google OAuth return redirect)
+      sb.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          processSupabaseSession(session);
+        }
+      }).catch((e) => console.warn('[Supabase getSession error]:', e));
+
+      // Listen for OAuth sign-in and token changes
+      const { data } = sb.auth.onAuthStateChange((event, session) => {
+        if (session && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          processSupabaseSession(session);
+        }
+      });
+      sbSubscription = data?.subscription;
+    }
+
+    // 2. Also restore backend custom session if available
     initAuthSession().then((restoredUser) => {
-      if (restoredUser) {
+      if (restoredUser && !currentUserData) {
         setUserData(restoredUser);
         setCurrentUser(restoredUser);
         setActiveAttempt(getLatestAttempt(restoredUser?.uid || restoredUser?.id));
       }
     });
 
-    // Listen for session expiration events (failed refresh / expired session)
+    // Listen for session expiration events
     const unsubscribe = subscribeAuth((event, data) => {
       if (event === 'session_expired') {
         const storedUser = getCurrentUser();
-        // Only clear and redirect if there is no active local session
         if (!storedUser) {
           logoutUser();
           clearAuthSession();
@@ -74,7 +168,11 @@ export default function App() {
         }
       }
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribe();
+      if (sbSubscription) sbSubscription.unsubscribe();
+    };
   }, []);
 
   // Secure Logout handler: immediately clears state synchronously so UI resets to landing page instantly
@@ -86,7 +184,15 @@ export default function App() {
     setActiveAttempt(null);
     setView('landing');
 
-    // 2. Clear backend refresh session and HttpOnly cookie in the background
+    // 2. Sign out of Supabase
+    try {
+      const sb = getSupabaseClient();
+      if (sb) sb.auth.signOut();
+    } catch (e) {
+      console.warn('[Supabase Logout Notice]:', e);
+    }
+
+    // 3. Clear backend refresh session and HttpOnly cookie in the background
     apiLogoutUser().catch((err) => {
       console.warn('[Logout] Backend session notice:', err);
     });
@@ -120,6 +226,7 @@ export default function App() {
           <AuthView 
             setView={setView} 
             setUserData={handleUserAuthenticated} 
+            setUserRole={setUserRole}
           />
         );
       case 'faculty':
@@ -128,6 +235,7 @@ export default function App() {
             <AuthView 
               setView={setView} 
               setUserData={handleUserAuthenticated} 
+              setUserRole={setUserRole}
             />
           );
         }
@@ -157,6 +265,7 @@ export default function App() {
             <AuthView 
               setView={setView} 
               setUserData={handleUserAuthenticated} 
+              setUserRole={setUserRole}
             />
           );
         }
@@ -176,8 +285,10 @@ export default function App() {
               setView={setView} 
               currentUser={currentUserData}
               userRole={userRole}
+              setUserRole={setUserRole}
               onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
               setActiveAttempt={setActiveAttempt}
+              setActiveAssessment={setActiveAssessment}
             />
           );
         }
@@ -192,66 +303,27 @@ export default function App() {
           />
         );
       case 'assessment':
-        // Guard: Only students take the assessment exam; faculty/admins view their respective portals
-        if (userRole === USER_ROLES.FACULTY || userRole === USER_ROLES.DEPT_HEAD) {
-          return (
-            <FacultyView
-              setView={setView}
-              currentUser={currentUserData}
-              userRole={userRole}
-              onLogout={handleLogout}
-            />
-          );
-        }
-        if (userRole !== USER_ROLES.STUDENT) {
-          return (
-            <AdminView 
-              setView={setView} 
-              currentUser={currentUserData}
-              userRole={userRole}
-              onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
-              setActiveAttempt={setActiveAttempt}
-            />
-          );
-        }
         return (
           <AssessmentView 
             setView={setView} 
             currentUser={currentUserData}
+            userRole={userRole}
             activeAssessment={activeAssessment}
-            onCompleteAttempt={(completedAttempt) => {
+            examLockdown={examLockdown}
+            setExamLockdown={setExamLockdown}
+            onCompleteAttempt={(completedAttempt, targetView = 'results') => {
               setActiveAttempt(completedAttempt);
-              setView('results');
+              setExamLockdown(null);
+              setView(targetView);
             }}
           />
         );
       case 'results':
-        // Guard: Individual test scorecard is for students only; Faculty/Admins view results in their portals
-        if (userRole === USER_ROLES.FACULTY || userRole === USER_ROLES.DEPT_HEAD) {
-          return (
-            <FacultyView
-              setView={setView}
-              currentUser={currentUserData}
-              userRole={userRole}
-              onLogout={handleLogout}
-            />
-          );
-        }
-        if (userRole !== USER_ROLES.STUDENT) {
-          return (
-            <AdminView 
-              setView={setView} 
-              currentUser={currentUserData}
-              userRole={userRole}
-              onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
-              setActiveAttempt={setActiveAttempt}
-            />
-          );
-        }
         return (
           <ResultsView 
             setView={setView} 
             currentUser={currentUserData}
+            userRole={userRole}
             activeAttempt={activeAttempt}
             setActiveAttempt={setActiveAttempt}
           />
@@ -275,6 +347,7 @@ export default function App() {
               userRole={userRole}
               onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
               setActiveAttempt={setActiveAttempt}
+              setActiveAssessment={setActiveAssessment}
             />
           );
         }
@@ -286,32 +359,11 @@ export default function App() {
           />
         );
       case 'certificate':
-        // Guard: Individual certificates are issued to students; Faculty/Admins view dashboards
-        if (userRole === USER_ROLES.FACULTY || userRole === USER_ROLES.DEPT_HEAD) {
-          return (
-            <FacultyView
-              setView={setView}
-              currentUser={currentUserData}
-              userRole={userRole}
-              onLogout={handleLogout}
-            />
-          );
-        }
-        if (userRole !== USER_ROLES.STUDENT) {
-          return (
-            <AdminView 
-              setView={setView} 
-              currentUser={currentUserData}
-              userRole={userRole}
-              onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
-              setActiveAttempt={setActiveAttempt}
-            />
-          );
-        }
         return (
           <CertificateView 
             setView={setView} 
             currentUser={currentUserData}
+            userRole={userRole}
             activeAttempt={activeAttempt}
           />
         );
@@ -345,8 +397,10 @@ export default function App() {
             setView={setView} 
             currentUser={currentUserData}
             userRole={userRole}
+            setUserRole={setUserRole}
             onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
             setActiveAttempt={setActiveAttempt}
+            setActiveAssessment={setActiveAssessment}
           />
         );
       default:
@@ -366,8 +420,10 @@ export default function App() {
               setView={setView} 
               currentUser={currentUserData}
               userRole={userRole}
+              setUserRole={setUserRole}
               onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
               setActiveAttempt={setActiveAttempt}
+              setActiveAssessment={setActiveAssessment}
             />
           );
         }
@@ -394,8 +450,10 @@ export default function App() {
           currentView={currentView} 
           setView={setView} 
           userRole={userRole} 
+          setUserRole={setUserRole}
           currentUser={currentUserData}
           onLogout={handleLogout}
+          examLockdown={examLockdown}
         />
       )}
 

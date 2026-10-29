@@ -17,9 +17,20 @@ import {
 } from 'lucide-react';
 import { USER_ROLES } from '../lib/storage';
 
-export default function Navbar({ currentView, setView, userRole, setUserRole, currentUser, onLogout }) {
+export default function Navbar({ currentView, setView, userRole, setUserRole, currentUser, onLogout, examLockdown }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showLockdownModal, setShowLockdownModal] = useState(false);
+  const [pendingTargetView, setPendingTargetView] = useState(null);
+
+  const handleNavClick = (targetId) => {
+    if (examLockdown?.active && targetId !== 'assessment') {
+      setPendingTargetView(targetId);
+      setShowLockdownModal(true);
+      return;
+    }
+    setView(targetId);
+  };
 
   // Dynamic nav links according to roles in COMPLETE_DOCUMENTATION.md
   const getNavLinks = () => {
@@ -78,6 +89,11 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
       }}>
         {/* Left Logo */}
         <Logo onClick={() => {
+          if (examLockdown?.active) {
+            setPendingTargetView(userRole === USER_ROLES.STUDENT ? 'dashboard' : 'admin');
+            setShowLockdownModal(true);
+            return;
+          }
           if (userRole === USER_ROLES.STUDENT) setView('dashboard');
           else if (userRole === USER_ROLES.FACULTY || userRole === USER_ROLES.DEPT_HEAD) setView('faculty');
           else setView('admin');
@@ -95,7 +111,7 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
             return (
               <button
                 key={link.id}
-                onClick={() => setView(link.id)}
+                onClick={() => handleNavClick(link.id)}
                 style={{
                   padding: '8px 16px',
                   borderRadius: '9999px',
@@ -117,6 +133,26 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
         {/* Right Section Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
+          {/* Exam Mode Active Badge */}
+          {examLockdown?.active && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FCA5A5',
+              color: '#DC2626',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.15)'
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#DC2626' }} />
+              <span>Exam Mode Active</span>
+            </div>
+          )}
+
           {/* Active Role Badge */}
           <div style={{
             display: 'inline-flex',
@@ -137,7 +173,13 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
           {/* Profile Pill & Role Switcher */}
           <div style={{ position: 'relative' }}>
             <div
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              onClick={() => {
+                if (examLockdown?.active) {
+                  setShowLockdownModal(true);
+                  return;
+                }
+                setProfileDropdownOpen(!profileDropdownOpen);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -238,6 +280,78 @@ export default function Navbar({ currentView, setView, userRole, setUserRole, cu
           </div>
         </div>
       </div>
+
+      {/* ── Active Exam Lockdown Guard Modal ──────────────────────────────── */}
+      {showLockdownModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.72)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div className="animate-pop" style={{
+            maxWidth: '480px',
+            width: '100%',
+            backgroundColor: '#FFFFFF',
+            borderRadius: '24px',
+            padding: '36px 30px',
+            textAlign: 'center',
+            border: '2px solid #8B1528',
+            boxShadow: '0 25px 50px -12px rgba(139, 21, 40, 0.3)'
+          }}>
+            <div style={{
+              width: 60, height: 60,
+              borderRadius: '50%',
+              backgroundColor: '#FEE2E2',
+              color: '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <ShieldCheck size={32} />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1C1917', marginBottom: '8px' }}>
+              Active Examination Session Locked
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#64748B', lineHeight: 1.55, marginBottom: '24px' }}>
+              You are actively engaged in <strong>{examLockdown?.sessionTitle || 'an assessment session'}</strong>. To preserve academic integrity and prevent accidental score loss, tab navigation is restricted until your session is completed or paused.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setShowLockdownModal(false)}
+                className="btn-primary"
+                style={{ padding: '11px 22px', fontSize: '0.88rem' }}
+              >
+                Continue Assessment
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (examLockdown?.onSaveAndExit) {
+                    examLockdown.onSaveAndExit();
+                  }
+                  setShowLockdownModal(false);
+                  if (pendingTargetView) {
+                    setView(pendingTargetView);
+                    setPendingTargetView(null);
+                  }
+                }}
+                className="btn-secondary"
+                style={{ padding: '11px 20px', fontSize: '0.88rem', borderColor: '#DC2626', color: '#DC2626' }}
+              >
+                Save &amp; Pause Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

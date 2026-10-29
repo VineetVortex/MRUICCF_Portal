@@ -106,6 +106,26 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
   const greeting = getGreeting();
   const GIcon = greeting.Icon;
 
+  const [activeSession, setActiveSession] = useState(null);
+
+  // Check for in-progress session with authoritative deadline
+  useEffect(() => {
+    let mounted = true;
+    async function checkActive() {
+      try {
+        const { apiGetActiveAttempt } = await import('../lib/api.js');
+        const res = await apiGetActiveAttempt(currentUserId);
+        if (mounted && res && res.success && res.data) {
+          setActiveSession(res.data);
+        }
+      } catch (e) {
+        console.warn('Check active attempt notice:', e);
+      }
+    }
+    if (currentUserId) checkActive();
+    return () => { mounted = false; };
+  }, [currentUserId]);
+
   const fmt = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   const handleLinkedInShare = () => {
@@ -253,6 +273,59 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
             </button>
           </div>
         </div>
+
+        {/* ── Active Examination Recovery Banner (Phase 2 & 4) ──────────── */}
+        {activeSession && (
+          <div className="animate-slide-up" style={{
+            backgroundColor: '#FEF2F2', border: '2px solid #8B1528',
+            borderRadius: '20px', padding: '20px 28px', marginBottom: '24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '16px',
+            boxShadow: '0 6px 20px rgba(139, 21, 40, 0.12)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#8B1528', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Clock size={26} className="animate-pulse" />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#8B1528', margin: 0 }}>
+                    Active Examination Session in Progress!
+                  </h3>
+                  <span style={{ padding: '3px 10px', borderRadius: '9999px', fontSize: '0.74rem', fontWeight: 800, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                    {Math.floor(activeSession.remainingSeconds / 60)}m {activeSession.remainingSeconds % 60}s Remaining
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: '#4B5563', marginTop: '4px', margin: 0 }}>
+                  You have an active timed attempt for <strong>{activeSession.assessmentName}</strong>. Your session is protected and ticking against the authoritative university server clock.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (setActiveAssessment) {
+                  setActiveAssessment({
+                    id: activeSession.assessmentId,
+                    name: activeSession.assessmentName,
+                    timeLimit: Math.ceil(activeSession.durationSeconds / 60)
+                  });
+                }
+                setView('assessment');
+              }}
+              className="btn-primary"
+              style={{
+                padding: '12px 24px',
+                fontSize: '0.92rem',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(139, 21, 40, 0.35)'
+              }}
+            >
+              <Zap size={16} />
+              <span>Resume Assessment Now</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
 
         {/* ── Certification Award Banner ────────────────────────────────── */}
         {isCertified && (
