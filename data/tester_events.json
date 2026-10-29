@@ -1,5 +1,98 @@
 [
   {
+    "id": "evt_1793276775726_j3l3m",
+    "eventType": "redemption_denied",
+    "actorId": "tester_ayush_774496@mru.ac.in",
+    "rosterId": "rost_1793276774504_0blqj",
+    "invitationId": "inv_1793276775382_gv2la",
+    "metadata": {
+      "reason": "code_revoked",
+      "revokedAt": "2026-10-29T12:26:15.509Z"
+    },
+    "createdAt": "2026-10-29T12:26:15.726Z"
+  },
+  {
+    "id": "evt_1793276775511_7hxx1",
+    "eventType": "invitation_revoked",
+    "actorId": "vineetkumar182023@gmail.com",
+    "rosterId": "rost_1793276774504_0blqj",
+    "invitationId": "inv_1793276775382_gv2la",
+    "metadata": {
+      "manualRevoke": true
+    },
+    "createdAt": "2026-10-29T12:26:15.511Z"
+  },
+  {
+    "id": "evt_1793276775431_3bc7j",
+    "eventType": "invitation_issued",
+    "actorId": "vineetkumar182023@gmail.com",
+    "rosterId": "rost_1793276774504_0blqj",
+    "invitationId": "inv_1793276775382_gv2la",
+    "metadata": {
+      "expiresAt": "2026-10-29T20:26:15.382Z",
+      "hoursValid": 8
+    },
+    "createdAt": "2026-10-29T12:26:15.431Z"
+  },
+  {
+    "id": "evt_1793276775297_3cn1j",
+    "eventType": "redemption_denied",
+    "actorId": "tester_anupam_774496@mru.ac.in",
+    "rosterId": "rost_1793276774503_3mf9x",
+    "invitationId": "inv_1793276774772_w80ko",
+    "metadata": {
+      "reason": "already_redeemed",
+      "originallyRedeemedAt": "2026-10-29T12:26:15.155Z"
+    },
+    "createdAt": "2026-10-29T12:26:15.297Z"
+  },
+  {
+    "id": "evt_1793276775223_xcp85",
+    "eventType": "invitation_redeemed",
+    "actorId": "tester_anupam_774496@mru.ac.in",
+    "rosterId": "rost_1793276774503_3mf9x",
+    "invitationId": "inv_1793276774772_w80ko",
+    "metadata": {
+      "studentName": "Anupam Kumar",
+      "rollNumber": "2K24CSUN01774"
+    },
+    "createdAt": "2026-10-29T12:26:15.223Z"
+  },
+  {
+    "id": "evt_1793276774937_4luc7",
+    "eventType": "redemption_denied",
+    "actorId": "22cse0002@mru.ac.in",
+    "rosterId": null,
+    "invitationId": "inv_1793276774772_w80ko",
+    "metadata": {
+      "reason": "wrong_student_identity_mismatch"
+    },
+    "createdAt": "2026-10-29T12:26:14.937Z"
+  },
+  {
+    "id": "evt_1793276774834_s3krb",
+    "eventType": "invitation_issued",
+    "actorId": "vineetkumar182023@gmail.com",
+    "rosterId": "rost_1793276774503_3mf9x",
+    "invitationId": "inv_1793276774772_w80ko",
+    "metadata": {
+      "expiresAt": "2026-10-29T20:26:14.772Z",
+      "hoursValid": 8
+    },
+    "createdAt": "2026-10-29T12:26:14.834Z"
+  },
+  {
+    "id": "evt_1793276774668_6nph1",
+    "eventType": "tester_authorized",
+    "actorId": "vineetkumar182023@gmail.com",
+    "rosterId": null,
+    "invitationId": null,
+    "metadata": {
+      "count": 2
+    },
+    "createdAt": "2026-10-29T12:26:14.668Z"
+  },
+  {
     "id": "evt_1793273700134_d9ox2",
     "eventType": "redemption_denied",
     "actorId": "tester_ayush_699039@mru.ac.in",

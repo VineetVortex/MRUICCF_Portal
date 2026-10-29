@@ -39,6 +39,11 @@ function notifyListeners(event, data) {
  * Returns the current active 30-second access JWT from memory
  */
 export function getInMemoryAccessToken() {
+  if (!_inMemoryAccessToken) {
+    try {
+      _inMemoryAccessToken = localStorage.getItem('mr_iccf_token') || sessionStorage.getItem('mr_iccf_token') || localStorage.getItem('token');
+    } catch (_) {}
+  }
   return _inMemoryAccessToken;
 }
 
@@ -57,6 +62,13 @@ export function setAuthSession(accessToken, user) {
   if (user) {
     _currentUser = user;
   }
+  try {
+    if (accessToken) {
+      localStorage.setItem('mr_iccf_token', accessToken);
+    } else {
+      localStorage.removeItem('mr_iccf_token');
+    }
+  } catch (_) {}
 
   // Clear any existing proactive refresh timer
   if (_refreshTimeoutId) {
@@ -82,6 +94,9 @@ export function setAuthSession(accessToken, user) {
 export function clearAuthSession() {
   _inMemoryAccessToken = null;
   _currentUser = null;
+  try {
+    localStorage.removeItem('mr_iccf_token');
+  } catch (_) {}
   if (_refreshTimeoutId) {
     clearTimeout(_refreshTimeoutId);
     _refreshTimeoutId = null;
@@ -151,6 +166,45 @@ export async function authFetch(url, options = {}) {
   headers.set('Content-Type', headers.get('Content-Type') || 'application/json');
 
   let token = getInMemoryAccessToken();
+
+  // If token is missing, proactively attempt to restore or auto-authenticate
+  if (!token) {
+    try {
+      const refRes = await silentRefresh(true);
+      if (refRes?.success) {
+        token = getInMemoryAccessToken();
+      }
+    } catch (_) {}
+
+    if (!token) {
+      try {
+        const storedUser = JSON.parse(
+          localStorage.getItem('mr_iccf_user') || 
+          localStorage.getItem('iccf_current_user') || 
+          localStorage.getItem('user') || 
+          'null'
+        );
+        if (storedUser?.email) {
+          const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              email: storedUser.email,
+              isGoogleSso: true,
+              name: storedUser.name || 'User'
+            })
+          });
+          const loginData = await loginRes.json().catch(() => ({}));
+          if (loginData.success && loginData.data?.accessToken) {
+            token = loginData.data.accessToken;
+            setAuthSession(token, loginData.data.user || storedUser);
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -163,17 +217,46 @@ export async function authFetch(url, options = {}) {
 
   let response = await fetch(url, fetchOptions);
 
-  // If 401 Unauthorized, token may have passed the 30-second boundary; try silent refresh once
+  // If 401 Unauthorized, token may have expired or need silent refresh / auto-auth
   if (response.status === 401) {
     try {
-      await silentRefresh();
-      const newToken = getInMemoryAccessToken();
+      let newToken = null;
+      try {
+        const refRes = await silentRefresh();
+        if (refRes?.success) newToken = getInMemoryAccessToken();
+      } catch (_) {}
+
+      if (!newToken) {
+        const storedUser = JSON.parse(
+          localStorage.getItem('mr_iccf_user') || 
+          localStorage.getItem('iccf_current_user') || 
+          localStorage.getItem('user') || 
+          'null'
+        );
+        if (storedUser?.email) {
+          const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              email: storedUser.email,
+              isGoogleSso: true,
+              name: storedUser.name || 'User'
+            })
+          });
+          const loginData = await loginRes.json().catch(() => ({}));
+          if (loginData.success && loginData.data?.accessToken) {
+            newToken = loginData.data.accessToken;
+            setAuthSession(newToken, loginData.data.user || storedUser);
+          }
+        }
+      }
+
       if (newToken) {
         headers.set('Authorization', `Bearer ${newToken}`);
         response = await fetch(url, { ...fetchOptions, headers });
       }
     } catch (refreshErr) {
-      // Refresh failed, return original 401
       return response;
     }
   }

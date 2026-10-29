@@ -212,9 +212,16 @@ export default function AdminView({
   const loadBackendTesters = async () => {
     setLoadingBackendTesters(true);
     try {
-      const res = await apiGetTesterRoster();
-      if (res && res.success && Array.isArray(res.testers)) {
+      let res = await apiGetTesterRoster();
+      if (res && res.success && Array.isArray(res.testers) && res.testers.length > 0) {
         setBackendTesters(res.testers);
+      } else {
+        // Auto-seed default 13 roster if backend empty
+        await apiImportTesterRoster(MRU_AUTHORIZED_TESTERS);
+        res = await apiGetTesterRoster();
+        if (res && res.success && Array.isArray(res.testers)) {
+          setBackendTesters(res.testers);
+        }
       }
     } catch (err) {
       console.warn('[AdminView] Failed to load backend testers:', err);
@@ -224,9 +231,11 @@ export default function AdminView({
   };
 
   const handleIssueTesterCode = async (tester) => {
-    setIssuingForId(tester.id);
+    const testerIdentifier = tester.id || tester.email;
+    if (!testerIdentifier) return;
+    setIssuingForId(testerIdentifier);
     try {
-      const res = await apiIssueTesterInvitation(tester.id, 8);
+      const res = await apiIssueTesterInvitation(testerIdentifier, 8);
       if (res && res.success && (res.code || res.invitationCode)) {
         setIssuedCodeModal({
           code: res.code || res.invitationCode,
@@ -3659,6 +3668,8 @@ export default function AdminView({
                     <tbody>
                       {(backendTesters.length > 0 ? backendTesters : filteredTesters).map((t, idx) => {
                         const status = t.invitationStatus || 'unissued';
+                        const testerIdentifier = t.id || t.email;
+                        const isGenerating = Boolean(issuingForId && issuingForId === testerIdentifier);
                         return (
                           <tr key={t.email || t.id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.15s' }}>
                             <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: '0.78rem' }}>{idx + 1}</td>
@@ -3706,7 +3717,7 @@ export default function AdminView({
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                                 <button
                                   onClick={() => handleIssueTesterCode(t)}
-                                  disabled={issuingForId === t.id}
+                                  disabled={isGenerating}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -3718,12 +3729,13 @@ export default function AdminView({
                                     border: status === 'active' ? '1px solid #D8B4FE' : 'none',
                                     fontSize: '0.78rem',
                                     fontWeight: 700,
-                                    cursor: 'pointer'
+                                    cursor: isGenerating ? 'not-allowed' : 'pointer',
+                                    opacity: isGenerating ? 0.7 : 1
                                   }}
                                   title={status === 'active' ? 'Issue replacement code' : 'Issue one-time invitation code'}
                                 >
                                   <KeyRound size={13} />
-                                  <span>{issuingForId === t.id ? 'Generating...' : (status === 'active' ? 'Reissue Code' : 'Issue Code')}</span>
+                                  <span>{isGenerating ? 'Generating...' : (status === 'active' ? 'Reissue Code' : 'Issue Code')}</span>
                                 </button>
 
                                 {status === 'active' && t.latestInvitation && (
