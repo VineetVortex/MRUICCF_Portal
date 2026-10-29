@@ -232,6 +232,7 @@ export default function AssessmentView({
   // Pre-Exam Instruction & Strict Lockdown Briefing Modal
   const [showExamBriefingModal, setShowExamBriefingModal] = useState(false);
   const [pendingStartQId, setPendingStartQId] = useState(null);
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
 
   // Live synchronizing attempt records to display completed skills in the Hub
   const [allAttemptsList, setAllAttemptsList] = useState(() => getStoredAttempts());
@@ -609,15 +610,19 @@ export default function AssessmentView({
     }
     setIsTimeExpired(false);
 
-    // Find first unanswered question within this questionnaire, or start at its beginning
-    let targetIdx = qDef.startIndex;
+    // Find all unanswered questions in this module
+    const unansweredIndices = [];
     for (let i = qDef.startIndex; i < qDef.endIndex; i++) {
       const q = questionsList[i];
       if (q && answers[q.id] === undefined) {
-        targetIdx = i;
-        break;
+        unansweredIndices.push(i);
       }
     }
+
+    // Support randomized sequence if requested, or sequential progression
+    const targetIdx = (shuffleQuestions && unansweredIndices.length > 0)
+      ? unansweredIndices[Math.floor(Math.random() * unansweredIndices.length)]
+      : (unansweredIndices[0] !== undefined ? unansweredIndices[0] : qDef.startIndex);
 
     setCurrentIndex(targetIdx);
     setActiveQuestionnaireId(qId);
@@ -942,6 +947,17 @@ export default function AssessmentView({
     ? questionnairesProgress
     : questionnairesProgress.filter(q => q.category === selectedCategoryFilter);
 
+  // Take any available questionnaire completely at random
+  const handleStartRandomQuestionnaire = () => {
+    const pending = INDIVIDUAL_QUESTIONNAIRES.filter(q => {
+      const past = completedSkillsMap[q.id];
+      return !past || !past.isCertified;
+    });
+    const targetPool = pending.length > 0 ? pending : INDIVIDUAL_QUESTIONNAIRES;
+    const randomPick = targetPool[Math.floor(Math.random() * targetPool.length)];
+    handleRequestStartQuestionnaire(randomPick.id);
+  };
+
   const formatTimer = (s) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -1264,11 +1280,36 @@ export default function AssessmentView({
             marginBottom: '18px'
           }}>
             <div>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
-                Individual Competency Questionnaires
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
+                  Individual Competency Questionnaires
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleStartRandomQuestionnaire}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    backgroundColor: '#8B1528',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(139, 21, 40, 0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Randomly select any available questionnaire"
+                >
+                  <Sparkles size={14} />
+                  <span>Start Random Questionnaire</span>
+                </button>
+              </div>
               <p style={{ fontSize: '0.85rem', color: '#78716C', margin: '4px 0 0 0' }}>
-                Select any individual questionnaire to start or resume. All questionnaires are open and self-paced.
+                Select any individual questionnaire in any order, or click Start Random Questionnaire to let the system select one.
               </p>
             </div>
 
@@ -2277,6 +2318,32 @@ export default function AssessmentView({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Random Question Shuffling Option */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                backgroundColor: shuffleQuestions ? '#FDF2F4' : '#FAF8F5',
+                border: shuffleQuestions ? '1.5px solid #8B1528' : '1px solid #ECE7DF',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={shuffleQuestions}
+                  onChange={(e) => setShuffleQuestions(e.target.checked)}
+                  style={{ accentColor: '#8B1528', width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <Sparkles size={15} color="#8B1528" />
+                <span style={{ fontSize: '0.84rem', fontWeight: 700, color: shuffleQuestions ? '#8B1528' : '#374151' }}>
+                  Randomize question presentation order for this attempt
+                </span>
+              </label>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
