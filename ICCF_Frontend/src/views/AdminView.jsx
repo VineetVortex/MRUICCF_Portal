@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { apiGetFeedbacks } from '../lib/api';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
+import MRU_AUTHORIZED_TESTERS from '../data/mruAuthorizedTesters.json';
 import { 
   getStoredQuestions, 
   approveQuestion, 
@@ -197,6 +198,104 @@ export default function AdminView({
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterStatusFilter, setRosterStatusFilter] = useState('all'); // 'all' | 'certified' | 'pending'
 
+  // Live Backend Tester Access State
+  const [backendTesters, setBackendTesters] = useState([]);
+  const [loadingBackendTesters, setLoadingBackendTesters] = useState(false);
+  const [issuedCodeModal, setIssuedCodeModal] = useState(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [auditLogModalOpen, setAuditLogModalOpen] = useState(false);
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [loadingAuditEvents, setLoadingAuditEvents] = useState(false);
+  const [issuingForId, setIssuingForId] = useState(null);
+  const [revokingForId, setRevokingForId] = useState(null);
+
+  const loadBackendTesters = async () => {
+    setLoadingBackendTesters(true);
+    try {
+      const res = await apiGetTesterRoster();
+      if (res && res.success && Array.isArray(res.testers)) {
+        setBackendTesters(res.testers);
+      }
+    } catch (err) {
+      console.warn('[AdminView] Failed to load backend testers:', err);
+    } finally {
+      setLoadingBackendTesters(false);
+    }
+  };
+
+  const handleIssueTesterCode = async (tester) => {
+    setIssuingForId(tester.id);
+    try {
+      const res = await apiIssueTesterInvitation(tester.id, 8);
+      if (res && res.success && (res.code || res.invitationCode)) {
+        setIssuedCodeModal({
+          code: res.code || res.invitationCode,
+          studentName: res.studentName || tester.fullName || tester.name,
+          studentEmail: res.studentEmail || tester.email,
+          rollNumber: res.rollNumber || tester.rollNumber || tester.rollNo,
+          expiresAt: res.expiresAt
+        });
+        setCodeCopied(false);
+        loadBackendTesters();
+      } else {
+        alert(res?.error || 'Failed to generate invitation code.');
+      }
+    } catch (err) {
+      alert(err.message || 'Error generating code.');
+    } finally {
+      setIssuingForId(null);
+    }
+  };
+
+  const handleRevokeTesterCode = async (invitationId, studentName) => {
+    if (!window.confirm(`Revoke unused invitation code for ${studentName}?`)) return;
+    setRevokingForId(invitationId);
+    try {
+      const res = await apiRevokeTesterInvitation(invitationId);
+      if (res && res.success) {
+        setTesterStatusMessage(`Invitation code for ${studentName} was revoked.`);
+        setTimeout(() => setTesterStatusMessage(''), 6000);
+        loadBackendTesters();
+      } else {
+        alert(res?.error || 'Failed to revoke invitation.');
+      }
+    } catch (err) {
+      alert(err.message || 'Error revoking invitation.');
+    } finally {
+      setRevokingForId(null);
+    }
+  };
+
+  const handleSyncDefaultRoster = async () => {
+    try {
+      const res = await apiImportTesterRoster(MRU_AUTHORIZED_TESTERS);
+      if (res && res.success) {
+        setTesterStatusMessage(`Successfully synced ${MRU_AUTHORIZED_TESTERS.length} authorized students to backend roster database!`);
+        setTimeout(() => setTesterStatusMessage(''), 8000);
+        loadBackendTesters();
+      } else {
+        alert(res?.error || 'Failed to sync default roster.');
+      }
+    } catch (err) {
+      alert(err.message || 'Error syncing default roster.');
+    }
+  };
+
+  const handleOpenAuditLog = async () => {
+    setAuditLogModalOpen(true);
+    setLoadingAuditEvents(true);
+    try {
+      const res = await apiGetTesterAccessEvents(50);
+      if (res && res.success) {
+        setAuditEvents(res.events || []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch tester events:', err);
+    } finally {
+      setLoadingAuditEvents(false);
+    }
+  };
+
   // Authorized Testers & Excel Testing Roster state
   const [authorizedTesters, setAuthorizedTesters] = useState(() => getStoredAuthorizedTesters());
   const [strictTestingMode, setStrictTestingModeState] = useState(() => isStrictTestingModeEnabled());
@@ -302,6 +401,7 @@ export default function AdminView({
     setAssessments(getStoredAssessments());
     setAttempts(getStoredAttempts());
     setAuthorizedTesters(getStoredAuthorizedTesters());
+    if (activeTab === 'testers') loadBackendTesters();
     setStrictTestingModeState(isStrictTestingModeEnabled());
   }, [activeTab]);
 
@@ -3424,6 +3524,27 @@ export default function AdminView({
                   <span>Download Sample Excel Template</span>
                 </button>
 
+                {/* Sync Default 13 Roster to DB */}
+                <button
+                  onClick={handleSyncDefaultRoster}
+                  className="btn-secondary"
+                  style={{ padding: '10px 16px', fontSize: '0.84rem', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#FEF3C7', borderColor: '#FDE68A', color: '#92400E', fontWeight: 700 }}
+                  title="Seed and sync default 13 authorized students into database"
+                >
+                  <Sparkles size={16} />
+                  <span>Sync 13 Roster to DB</span>
+                </button>
+
+                {/* Audit Trail Button */}
+                <button
+                  onClick={handleOpenAuditLog}
+                  className="btn-secondary"
+                  style={{ padding: '10px 16px', fontSize: '0.84rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <History size={16} />
+                  <span>Audit Trail</span>
+                </button>
+
                 {/* Send Email Invites */}
                 <button
                   onClick={handleSendAllInvites}
@@ -3528,67 +3649,410 @@ export default function AdminView({
                     <thead>
                       <tr style={{ backgroundColor: '#FAF8F5', borderBottom: '2px solid #EAE7E0', textAlign: 'left' }}>
                         <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>#</th>
-                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Email Address</th>
-                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Full Name</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Student / Email</th>
                         <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Roll / ID</th>
                         <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Department</th>
-                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Role</th>
-                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563', textAlign: 'right' }}>Actions</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563' }}>Access Status</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 700, color: '#4B5563', textAlign: 'right' }}>One-Time Code Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredTesters.map((t, idx) => (
-                        <tr key={t.email} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.15s' }}>
-                          <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: '0.78rem' }}>{idx + 1}</td>
-                          <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1C1917' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{t.email}</span>
-                              {t.email.toLowerCase() === 'vineetkumar182023@gmail.com' && (
-                                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: '0.68rem', fontWeight: 800 }}>
-                                  PRIMARY ADMIN
+                      {(backendTesters.length > 0 ? backendTesters : filteredTesters).map((t, idx) => {
+                        const status = t.invitationStatus || 'unissued';
+                        return (
+                          <tr key={t.email || t.id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.15s' }}>
+                            <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: '0.78rem' }}>{idx + 1}</td>
+                            <td style={{ padding: '10px 14px' }}>
+                              <div style={{ fontWeight: 700, color: '#1C1917' }}>{t.fullName || t.name || 'Student Tester'}</div>
+                              <div style={{ fontSize: '0.76rem', color: '#6B7280' }}>{t.email}</div>
+                              {t.teamId && (
+                                <span style={{ display: 'inline-block', marginTop: '2px', padding: '1px 6px', borderRadius: '4px', backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '0.68rem', fontWeight: 600 }}>
+                                  {t.teamId}
                                 </span>
                               )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '10px 14px', color: '#374151' }}>{t.name || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: '#6B7280', fontFamily: 'monospace' }}>{t.rollNo || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: '#4B5563' }}>{t.department || 'Computer Science & Technology'}</td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              backgroundColor: t.role === 'faculty' ? '#EFF6FF' : '#F3F4F6',
-                              color: t.role === 'faculty' ? '#1E40AF' : '#4B5563'
-                            }}>
-                              {t.role || 'student'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => handleDeleteTester(t.email)}
-                              style={{
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                backgroundColor: '#FEE2E2',
-                                border: '1px solid #FCA5A5',
-                                color: '#DC2626',
-                                cursor: 'pointer'
-                              }}
-                              title={`Revoke access for ${t.email}`}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td style={{ padding: '10px 14px', color: '#374151', fontFamily: 'monospace' }}>
+                              {t.rollNumber || t.rollNo || '—'}
+                            </td>
+                            <td style={{ padding: '10px 14px', color: '#4B5563' }}>
+                              {t.department || 'B.Tech CSE Core'}
+                            </td>
+                            <td style={{ padding: '10px 14px' }}>
+                              {status === 'active' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                                  <KeyRound size={12} />
+                                  <span>Active (Code Issued)</span>
+                                </span>
+                              ) : status === 'redeemed' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, backgroundColor: '#DCFCE7', color: '#15803D' }}>
+                                  <CheckCircle2 size={12} />
+                                  <span>Redeemed & Active</span>
+                                </span>
+                              ) : status === 'expired' ? (
+                                <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+                                  Expired
+                                </span>
+                              ) : status === 'revoked' ? (
+                                <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, backgroundColor: '#E7E5E4', color: '#57534E' }}>
+                                  Revoked
+                                </span>
+                              ) : (
+                                <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 600, backgroundColor: '#F3F4F6', color: '#6B7280' }}>
+                                  Unissued
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleIssueTesterCode(t)}
+                                  disabled={issuingForId === t.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '5px 10px',
+                                    borderRadius: '8px',
+                                    backgroundColor: status === 'active' ? '#FAF5FF' : '#8B1528',
+                                    color: status === 'active' ? '#6B21A8' : '#FFFFFF',
+                                    border: status === 'active' ? '1px solid #D8B4FE' : 'none',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title={status === 'active' ? 'Issue replacement code' : 'Issue one-time invitation code'}
+                                >
+                                  <KeyRound size={13} />
+                                  <span>{issuingForId === t.id ? 'Generating...' : (status === 'active' ? 'Reissue Code' : 'Issue Code')}</span>
+                                </button>
+
+                                {status === 'active' && t.latestInvitation && (
+                                  <button
+                                    onClick={() => handleRevokeTesterCode(t.latestInvitation.id, t.fullName || t.name)}
+                                    disabled={revokingForId === t.latestInvitation.id}
+                                    style={{
+                                      padding: '5px 8px',
+                                      borderRadius: '8px',
+                                      backgroundColor: '#FEE2E2',
+                                      color: '#DC2626',
+                                      border: '1px solid #FCA5A5',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Revoke active invitation"
+                                  >
+                                    <UserX size={13} />
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => handleDeleteTester(t.email)}
+                                  style={{
+                                    padding: '5px 8px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#F3F4F6',
+                                    color: '#6B7280',
+                                    border: '1px solid #E5E7EB',
+                                    fontSize: '0.76rem',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Remove from roster"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+
+            {/* Issued Code Modal (Displayed ONCE) */}
+            {issuedCodeModal && (
+              <div style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 99999,
+                padding: '20px'
+              }}>
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '18px',
+                  width: '100%',
+                  maxWidth: '520px',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                  overflow: 'hidden'
+                }}>
+                  {/* Modal Header */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #8B0000 0%, #A51D24 100%)',
+                    color: '#FFFFFF',
+                    padding: '20px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '10px',
+                        backgroundColor: 'rgba(255,255,255,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <KeyRound size={20} color="#FDE047" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#FDE047', fontWeight: 800 }}>
+                          MRU ICCF Tester Access
+                        </div>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                          Tester Invitation Generated
+                        </h3>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIssuedCodeModal(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'rgba(255,255,255,0.8)',
+                        cursor: 'pointer',
+                        padding: '4px'
+                      }}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div style={{ padding: '24px' }}>
+                    <div style={{
+                      backgroundColor: '#FFFBEB',
+                      border: '1px solid #FDE68A',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      marginBottom: '18px',
+                      fontSize: '0.82rem',
+                      color: '#92400E',
+                      lineHeight: 1.45
+                    }}>
+                      <strong>SECURITY NOTICE:</strong> This cryptographic one-time invitation code is <em>displayed once</em> by the admin interface. It is not stored in plaintext anywhere on the server or database. Please copy and give it directly to the authorized student in person.
+                    </div>
+
+                    {/* Student Info Summary */}
+                    <div style={{
+                      backgroundColor: '#FAF8F5',
+                      border: '1px solid #ECE7DF',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      marginBottom: '20px',
+                      fontSize: '0.84rem'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ color: '#78716C', fontWeight: 600 }}>Student:</span>
+                        <span style={{ fontWeight: 700, color: '#1C1917' }}>{issuedCodeModal.studentName}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ color: '#78716C', fontWeight: 600 }}>Roll Number:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1C1917' }}>{issuedCodeModal.rollNumber}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#78716C', fontWeight: 600 }}>Email:</span>
+                        <span style={{ color: '#1C1917' }}>{issuedCodeModal.studentEmail}</span>
+                      </div>
+                    </div>
+
+                    {/* Monospace Code Display */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B7280', fontWeight: 700, marginBottom: '6px' }}>
+                        One-Time Invitation Code (Valid for 8 Hours)
+                      </div>
+                      <div style={{
+                        backgroundColor: '#1E1B18',
+                        color: '#FDE047',
+                        fontFamily: 'monospace',
+                        fontSize: '1.25rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.12em',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        border: '2px solid #CA8A04',
+                        userSelect: 'all'
+                      }}>
+                        {issuedCodeModal.code}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(issuedCodeModal.code);
+                          setCodeCopied(true);
+                          setTimeout(() => setCodeCopied(false), 3000);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          borderRadius: '10px',
+                          backgroundColor: codeCopied ? '#15803D' : '#8B1528',
+                          color: '#FFFFFF',
+                          fontWeight: 700,
+                          fontSize: '0.88rem',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          boxShadow: '0 4px 12px rgba(139, 21, 40, 0.25)',
+                          transition: 'background-color 0.2s'
+                        }}
+                      >
+                        {codeCopied ? <Check size={16} /> : <Copy size={16} />}
+                        <span>{codeCopied ? 'Code Copied to Clipboard!' : 'Copy Invitation Code'}</span>
+                      </button>
+                      <button
+                        onClick={() => setIssuedCodeModal(null)}
+                        style={{
+                          padding: '12px 18px',
+                          borderRadius: '10px',
+                          backgroundColor: '#F3F4F6',
+                          color: '#374151',
+                          fontWeight: 700,
+                          fontSize: '0.88rem',
+                          border: '1px solid #D1D5DB',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Audit Trail Modal */}
+            {auditLogModalOpen && (
+              <div style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 99999,
+                padding: '20px'
+              }}>
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '18px',
+                  width: '100%',
+                  maxWidth: '720px',
+                  maxHeight: '85vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    padding: '20px 24px',
+                    borderBottom: '1px solid #E5E7EB',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <History size={20} color="#8B1528" />
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#1C1917' }}>
+                        Tester Access Audit Trail
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setAuditLogModalOpen(false)}
+                      style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer' }}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+                    {loadingAuditEvents ? (
+                      <div style={{ textAlign: 'center', padding: '32px', color: '#6B7280' }}>
+                        Loading audit events...
+                      </div>
+                    ) : auditEvents.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '32px', color: '#6B7280' }}>
+                        No audit events recorded yet.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {auditEvents.map((ev, i) => (
+                          <div key={ev.id || i} style={{
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            backgroundColor: '#FAF8F5',
+                            border: '1px solid #ECE7DF',
+                            fontSize: '0.82rem'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.72rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: ev.eventType?.includes('denied') ? '#FEE2E2' : (ev.eventType?.includes('redeemed') ? '#DCFCE7' : '#EFF6FF'),
+                                color: ev.eventType?.includes('denied') ? '#991B1B' : (ev.eventType?.includes('redeemed') ? '#166534' : '#1E40AF')
+                              }}>
+                                {ev.eventType}
+                              </span>
+                              <span style={{ color: '#9CA3AF', fontSize: '0.74rem' }}>
+                                {new Date(ev.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <div style={{ color: '#374151' }}>
+                              Actor: <strong>{ev.actorId || 'system'}</strong>
+                            </div>
+                            {ev.metadata && Object.keys(ev.metadata).length > 0 && (
+                              <div style={{ color: '#6B7280', fontSize: '0.74rem', marginTop: '4px', fontFamily: 'monospace' }}>
+                                {JSON.stringify(ev.metadata)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '14px 24px', borderTop: '1px solid #E5E7EB', textAlign: 'right' }}>
+                    <button
+                      onClick={() => setAuditLogModalOpen(false)}
+                      className="btn-secondary"
+                      style={{ padding: '8px 16px', fontSize: '0.84rem' }}
+                    >
+                      Close Audit Trail
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Email Dispatch Result Modal */}
             {inviteResultModal && (

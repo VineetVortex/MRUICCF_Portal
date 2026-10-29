@@ -610,4 +610,108 @@ export async function apiGetFeedbacks() {
   }
 }
 
+/**
+ * ==========================================
+ * Tester Access & One-Time Invitation APIs
+ * ==========================================
+ */
+
+/**
+ * Admin: Import/update authorized testing roster
+ */
+export async function apiImportTesterRoster(testers) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/admin/testers/import`, {
+      method: 'POST',
+      body: JSON.stringify({ testers })
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Get tester roster with invitation statuses
+ */
+export async function apiGetTesterRoster(search = '') {
+  try {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    const res = await authFetch(`${API_BASE_URL}/admin/testers${query}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, testers: [] };
+  }
+}
+
+/**
+ * Admin: Issue a new high-entropy one-time invitation code
+ * Plaintext code is returned ONCE by the backend and never retrievable again.
+ */
+export async function apiIssueTesterInvitation(rosterId, expiresInHours = 8) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/admin/testers/${rosterId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ expiresInHours })
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Revoke an unused invitation
+ */
+export async function apiRevokeTesterInvitation(invitationId) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/admin/invitations/${invitationId}/revoke`, {
+      method: 'POST'
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Get tester access event audit log
+ */
+export async function apiGetTesterAccessEvents(limit = 100) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/admin/tester-events?limit=${limit}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, events: [] };
+  }
+}
+
+/**
+ * Student: Check active tester authorization status
+ */
+export async function apiGetTesterAccessStatus() {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/tester-access/status`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, isTester: false, error: err.message };
+  }
+}
+
+/**
+ * Student: Atomically redeem a one-time invitation code
+ */
+export async function apiRedeemTesterCode(code) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/tester-access/redeem`, {
+      method: 'POST',
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 

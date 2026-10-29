@@ -10,6 +10,7 @@ import auditRoutes from './auditRoutes.js';
 import aiRoutes from './aiRoutes.js';
 import facultyRoutes from './facultyRoutes.js';
 import feedbackRoutes from './feedbackRoutes.js';
+import testerAccessRoutes from './testerAccessRoutes.js';
 
 const apiRouter = Router();
 
@@ -24,6 +25,7 @@ apiRouter.use('/audit-logs', auditRoutes);
 apiRouter.use('/ai', aiRoutes);
 apiRouter.use('/faculty', facultyRoutes);
 apiRouter.use('/feedback', feedbackRoutes);
+apiRouter.use('/', testerAccessRoutes);
 
 // API Information Route
 apiRouter.get('/', (req, res) => {

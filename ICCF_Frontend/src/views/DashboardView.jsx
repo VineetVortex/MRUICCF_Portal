@@ -3,10 +3,12 @@ import {
   ClipboardList, CheckCircle2, Award, Target, ArrowRight,
   Calendar, Clock, ChevronRight, TrendingUp, AlertCircle,
   RotateCcw, History, FileCheck, Sparkles, BookOpen, X, Info,
-  Zap, Sun, Moon, Sunset, ExternalLink, MessageSquare
+  Zap, Sun, Moon, Sunset, ExternalLink, MessageSquare, KeyRound
 } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import BetaFeedbackModal from '../components/BetaFeedbackModal';
+import TesterRedemptionModal from '../components/TesterRedemptionModal';
+import { apiGetTesterAccessStatus } from '../lib/api';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
 import { getStoredAttempts, getStoredAssessments } from '../lib/storage';
 import { CERTIFICATION_THRESHOLD, getCompetencyLevel } from '../lib/scoring';
@@ -119,6 +121,16 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
   const topStrengths = sortedByScore.filter(c => c.score >= 50).slice(0, 3);
   const developmentAreas = [...(attemptedCompetencies.length > 0 ? attemptedCompetencies : competencyData)].sort((a, b) => a.score - b.score).slice(0, 3);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [testerStatus, setTesterStatus] = useState(null);
+
+  useEffect(() => {
+    apiGetTesterAccessStatus().then(res => {
+      if (res && (res.isTester || res.isAuthorizedTester)) {
+        setTesterStatus(res.student || res);
+      }
+    }).catch(() => {});
+  }, []);
 
   const availableAssessments = getStoredAssessments().filter(a => a.active);
 
@@ -302,6 +314,46 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
               <MessageSquare size={14} />
               <span>Beta Feedback</span>
             </button>
+            {testerStatus ? (
+              <div style={{
+                padding: '9px 16px',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                color: '#FEF08A',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                border: '1px solid rgba(255,255,255,0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Sparkles size={14} />
+                <span>Tester: {testerStatus.rollNumber || 'Authorized'}</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowRedeemModal(true)}
+                style={{
+                  padding: '11px 18px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backdropFilter: 'blur(8px)',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Redeem single-use tester invitation code"
+              >
+                <KeyRound size={14} />
+                <span>Redeem Tester Code</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 if (setActiveAssessment && availableAssessments[0]) setActiveAssessment(availableAssessments[0]);
@@ -802,6 +854,12 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
         currentUser={currentUser}
+      />
+      <TesterRedemptionModal
+        isOpen={showRedeemModal}
+        onClose={() => setShowRedeemModal(false)}
+        userEmail={currentUser?.email}
+        onSuccess={(t) => setTesterStatus(t)}
       />
     </div>
   );
