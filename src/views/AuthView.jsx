@@ -21,7 +21,7 @@ import {
   ExternalLink,
   X
 } from 'lucide-react';
-import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized } from '../lib/storage';
+import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized, isStudentTesterRedeemed } from '../lib/storage';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { 
   resolveClientIdentity, 
@@ -149,7 +149,11 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
     if (setUserData) setUserData(user);
     if (setUserRole) setUserRole(user.role);
     if (user.role === USER_ROLES.STUDENT) {
-      setView('dashboard');
+      if (isStudentTesterRedeemed(user.email)) {
+        setView('dashboard');
+      } else {
+        setView('redeem');
+      }
     } else if (user.role === USER_ROLES.FACULTY || user.role === USER_ROLES.DEPT_HEAD) {
       setView('faculty');
     } else {

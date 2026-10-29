@@ -21,8 +21,11 @@ import {
   getStoredAssessments,
   getStoredAttempts,
   getLatestAttempt,
-  handleSeedData
+  handleSeedData,
+  isStudentTesterRedeemed,
+  setStudentTesterRedeemed
 } from './lib/storage';
+import RedeemView from './views/RedeemView';
 import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from './lib/authClient';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
 import { resolveClientIdentity } from './lib/authResolver';
@@ -36,6 +39,10 @@ const resolveViewForUser = (user) => {
   }
   if (role === 'faculty' || role === 'dept_head' || role === 'hod' || role === 'dean') {
     return 'faculty';
+  }
+  // For students: must enter and redeem tester invitation code before dashboard opens
+  if (!isStudentTesterRedeemed(user.email)) {
+    return 'redeem';
   }
   return 'dashboard';
 };
@@ -288,7 +295,19 @@ export default function App() {
           );
         }
         if (userRole === USER_ROLES.STUDENT) {
+          if (userRole === USER_ROLES.STUDENT && !isStudentTesterRedeemed(currentUserData?.email)) {
           return (
+            <RedeemView 
+              currentUser={currentUserData}
+              onRedeemed={(tester) => {
+                setStudentTesterRedeemed(currentUserData?.email, true);
+                setView('dashboard');
+              }}
+              onLogout={handleLogout}
+            />
+          );
+        }
+        return (
             <DashboardView
               setView={setView}
               currentUser={currentUserData}
@@ -337,6 +356,18 @@ export default function App() {
               onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
               setActiveAttempt={setActiveAttempt}
               setActiveAssessment={setActiveAssessment}
+            />
+          );
+        }
+        if (userRole === USER_ROLES.STUDENT && !isStudentTesterRedeemed(currentUserData?.email)) {
+          return (
+            <RedeemView 
+              currentUser={currentUserData}
+              onRedeemed={(tester) => {
+                setStudentTesterRedeemed(currentUserData?.email, true);
+                setView('dashboard');
+              }}
+              onLogout={handleLogout}
             />
           );
         }
@@ -427,7 +458,19 @@ export default function App() {
         }
         // Guard: Students cannot access Admin portal
         if (userRole === USER_ROLES.STUDENT) {
+          if (userRole === USER_ROLES.STUDENT && !isStudentTesterRedeemed(currentUserData?.email)) {
           return (
+            <RedeemView 
+              currentUser={currentUserData}
+              onRedeemed={(tester) => {
+                setStudentTesterRedeemed(currentUserData?.email, true);
+                setView('dashboard');
+              }}
+              onLogout={handleLogout}
+            />
+          );
+        }
+        return (
             <DashboardView
               setView={setView}
               currentUser={currentUserData}
@@ -484,6 +527,18 @@ export default function App() {
             />
           );
         }
+        if (userRole === USER_ROLES.STUDENT && !isStudentTesterRedeemed(currentUserData?.email)) {
+          return (
+            <RedeemView 
+              currentUser={currentUserData}
+              onRedeemed={(tester) => {
+                setStudentTesterRedeemed(currentUserData?.email, true);
+                setView('dashboard');
+              }}
+              onLogout={handleLogout}
+            />
+          );
+        }
         return (
           <DashboardView
             setView={setView}
@@ -497,7 +552,7 @@ export default function App() {
     }
   };
 
-  const isFullscreenView = currentView === 'splash' || currentView === 'landing' || currentView === 'auth';
+  const isFullscreenView = currentView === 'splash' || currentView === 'landing' || currentView === 'auth' || currentView === 'redeem';
 
   return (
     <div className="app-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

@@ -180,6 +180,47 @@ export function setStrictTestingMode(enabled) {
   }
 }
 
+/**
+ * Checks whether a student has redeemed their one-time invitation code
+ */
+export function isStudentTesterRedeemed(email) {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  // Admin & Faculty bypass tester invitation redemption
+  if (
+    clean === 'vineetkumar182023@gmail.com' ||
+    clean === 'vineetkr013@gmail.com' ||
+    clean === 'iccf@mruadmin.edu.in' ||
+    clean === 'admin.iccf@mru.edu.in' ||
+    clean === BOOTSTRAP_ADMIN_EMAIL.toLowerCase().trim()
+  ) {
+    return true;
+  }
+  try {
+    if (localStorage.getItem('mr_iccf_tester_redeemed_' + clean) === 'true') {
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+/**
+ * Marks a student as having successfully redeemed their one-time invitation code
+ */
+export function setStudentTesterRedeemed(email, value = true) {
+  if (!email) return;
+  const clean = email.toLowerCase().trim();
+  try {
+    localStorage.setItem('mr_iccf_tester_redeemed_' + clean, String(value));
+    // Also add to authorized testers list in storage
+    const current = getStoredAuthorizedTesters();
+    if (!current.some(t => (t.email || '').toLowerCase() === clean)) {
+      current.push({ email: clean, redeemedAt: new Date().toISOString() });
+      saveAuthorizedTesters(current);
+    }
+  } catch (_) {}
+}
+
 // No pre-seeded users — real users are created on first login via Google OAuth / email auth
 
 // Questions come from the database — populated with master questionnaire baseline
