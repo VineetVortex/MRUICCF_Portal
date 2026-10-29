@@ -27,6 +27,19 @@ import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from 
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
 import { resolveClientIdentity } from './lib/authResolver';
 
+// Helper to determine the authoritative home view based on authentication & role
+const resolveViewForUser = (user) => {
+  if (!user) return 'landing';
+  const role = (user.role || '').toLowerCase();
+  if (role === 'core_team' || role === 'system_admin' || role === 'admin') {
+    return 'admin';
+  }
+  if (role === 'faculty' || role === 'dept_head' || role === 'hod' || role === 'dean') {
+    return 'faculty';
+  }
+  return 'dashboard';
+};
+
 export default function App() {
   // Public Credential Verification via QR scan (?verify=MRU-ICCF-...)
   const [publicVerifyId, setPublicVerifyId] = useState(() => {
@@ -37,9 +50,9 @@ export default function App() {
     return null;
   });
 
-  // Current view state: default to landing page
+  // Current view state: authenticated users go directly to their portal; guests see landing
   const [currentUserData, setUserData] = useState(() => getCurrentUser());
-  const [currentView, setView] = useState('landing');
+  const [currentView, setView] = useState(() => resolveViewForUser(getCurrentUser()));
   
   // User & Role State adhering to COMPLETE_DOCUMENTATION.md
   // Roles: 'student' | 'dept_head' | 'core_team' | 'system_admin'
@@ -148,10 +161,11 @@ export default function App() {
 
     // 2. Also restore backend custom session if available
     initAuthSession().then((restoredUser) => {
-      if (restoredUser && !currentUserData) {
+      if (restoredUser) {
         setUserData(restoredUser);
         setCurrentUser(restoredUser);
         setActiveAttempt(getLatestAttempt(restoredUser?.uid || restoredUser?.id));
+        setView((prev) => (prev === 'landing' || prev === 'auth' ? resolveViewForUser(restoredUser) : prev));
       }
     });
 
@@ -164,7 +178,7 @@ export default function App() {
           clearAuthSession();
           setUserData(null);
           setActiveAttempt(null);
-          setView('landing');
+          setView('auth');
         }
       }
     });
@@ -175,14 +189,14 @@ export default function App() {
     };
   }, []);
 
-  // Secure Logout handler: immediately clears state synchronously so UI resets to landing page instantly
+  // Secure Logout handler: immediately clears state synchronously and redirects to Login page
   const handleLogout = () => {
     // 1. Immediately reset application state
     logoutUser();
     clearAuthSession();
     setUserData(null);
     setActiveAttempt(null);
-    setView('landing');
+    setView('auth'); // Redirect to login page on logout
 
     // 2. Sign out of Supabase
     try {
@@ -204,20 +218,49 @@ export default function App() {
       setUserData(user);
       setCurrentUser(user);
       setActiveAttempt(getLatestAttempt(user?.uid || user?.id));
-      const role = (user.role || '').toLowerCase();
-      if (role === 'core_team' || role === 'system_admin' || role === 'admin') {
-        setView('admin');
-      } else if (role === 'faculty' || role === 'dept_head' || role === 'hod' || role === 'dean') {
-        setView('faculty');
-      } else {
-        setView('dashboard');
-      }
+      setView(resolveViewForUser(user));
     }
   };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'landing':
+        if (currentUserData) {
+          const target = resolveViewForUser(currentUserData);
+          if (target === 'faculty') {
+            return (
+              <FacultyView
+                setView={setView}
+                currentUser={currentUserData}
+                userRole={userRole}
+                onLogout={handleLogout}
+              />
+            );
+          }
+          if (target === 'admin') {
+            return (
+              <AdminView
+                setView={setView}
+                currentUser={currentUserData}
+                userRole={userRole}
+                setUserRole={setUserRole}
+                onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
+                setActiveAttempt={setActiveAttempt}
+                setActiveAssessment={setActiveAssessment}
+              />
+            );
+          }
+          return (
+            <DashboardView
+              setView={setView}
+              currentUser={currentUserData}
+              userRole={userRole}
+              activeAttempt={activeAttempt}
+              setActiveAttempt={setActiveAttempt}
+              setActiveAssessment={setActiveAssessment}
+            />
+          );
+        }
         return <LandingView setView={setView} currentUser={currentUserData} onLogout={handleLogout} />;
       case 'splash':
         return <SplashView setView={setView} />;
