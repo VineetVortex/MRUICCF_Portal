@@ -1,34 +1,24 @@
 {
   "expo": {
-    "name": "MRU ICCF",
-    "slug": "mru-iccf",
+    "name": "ICCF_Mobile",
+    "slug": "ICCF_Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#8B1528"
-    },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "in.ac.mru.iccf"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#8B1528",
-        "foregroundImage": "./assets/android-icon-foreground.png"
-      },
-      "package": "in.ac.mru.iccf"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
     },
     "web": {
-      "favicon": "./assets/icon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "147e0459-45b6-42d4-acf4-e03fe3e14080"
-      }
+      "favicon": "./assets/favicon.png"
     }
   }
 }
