@@ -131,8 +131,21 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
   const isBootstrapAdmin = email.trim().toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
 
   // Helper for applying user session
-  const applyUserSession = (user) => {
+  const applyUserSession = async (user) => {
     setCurrentUser(user);
+    try {
+      if (!getInMemoryAccessToken()) {
+        const authRes = await apiLoginUser({
+          email: user.email,
+          isGoogleSso: true,
+          name: user.name || 'User'
+        });
+        if (authRes?.success && authRes.data?.user) {
+          user = { ...user, ...authRes.data.user };
+          setCurrentUser(user);
+        }
+      }
+    } catch (_) {}
     if (setUserData) setUserData(user);
     if (setUserRole) setUserRole(user.role);
     if (user.role === USER_ROLES.STUDENT) {

@@ -50,8 +50,21 @@ export function getInMemoryAccessToken() {
 /**
  * Returns the currently authenticated user profile
  */
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem('mr_iccf_current_user_v1') ||
+      localStorage.getItem('mr_iccf_current_user') ||
+      localStorage.getItem('mr_iccf_user') ||
+      localStorage.getItem('iccf_current_user') ||
+      localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export function getAuthenticatedUser() {
-  return _currentUser;
+  return _currentUser || getStoredUser();
 }
 
 /**
@@ -122,11 +135,11 @@ export async function silentRefresh(isProactiveOrInit = false) {
       });
 
       if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
         if (isProactiveOrInit && (res.status === 401 || res.status === 403)) {
           // Expected clean state on initial page load when visitor has no existing session
-          return { success: false, unauthenticated: true };
+          return { success: false, unauthenticated: true, code: errData.code };
         }
-        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || `Refresh failed with status ${res.status}`);
       }
 
@@ -178,12 +191,7 @@ export async function authFetch(url, options = {}) {
 
     if (!token) {
       try {
-        const storedUser = JSON.parse(
-          localStorage.getItem('mr_iccf_user') || 
-          localStorage.getItem('iccf_current_user') || 
-          localStorage.getItem('user') || 
-          'null'
-        );
+        const storedUser = getStoredUser();
         if (storedUser?.email) {
           const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
@@ -227,12 +235,7 @@ export async function authFetch(url, options = {}) {
       } catch (_) {}
 
       if (!newToken) {
-        const storedUser = JSON.parse(
-          localStorage.getItem('mr_iccf_user') || 
-          localStorage.getItem('iccf_current_user') || 
-          localStorage.getItem('user') || 
-          'null'
-        );
+        const storedUser = getStoredUser();
         if (storedUser?.email) {
           const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',

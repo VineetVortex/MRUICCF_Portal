@@ -160,20 +160,42 @@ export default function App() {
     }
 
     // 2. Also restore backend custom session if available
-    initAuthSession().then((restoredUser) => {
+    initAuthSession().then(async (restoredUser) => {
       if (restoredUser) {
         setUserData(restoredUser);
         setCurrentUser(restoredUser);
         setActiveAttempt(getLatestAttempt(restoredUser?.uid || restoredUser?.id));
         setView((prev) => (prev === 'landing' || prev === 'auth' ? resolveViewForUser(restoredUser) : prev));
+      } else {
+        // Backend refresh returned unauthenticated. Check if local user exists in storage
+        const localUser = getCurrentUser();
+        if (localUser && localUser.email) {
+          setUserData(localUser);
+          setActiveAttempt(getLatestAttempt(localUser?.uid || localUser?.id));
+          setView((prev) => (prev === 'landing' || prev === 'auth' ? resolveViewForUser(localUser) : prev));
+          // Proactively re-establish backend access token and HttpOnly refresh session if missing
+          if (!getInMemoryAccessToken()) {
+            apiLoginUser({
+              email: localUser.email,
+              isGoogleSso: true,
+              name: localUser.name || 'User'
+            }).then((res) => {
+              if (res?.success && res.data?.user) {
+                const merged = { ...localUser, ...res.data.user };
+                setUserData(merged);
+                setCurrentUser(merged);
+              }
+            }).catch(() => {});
+          }
+        }
       }
     });
 
     // Listen for session expiration events
     const unsubscribe = subscribeAuth((event, data) => {
       if (event === 'session_expired') {
-        const storedUser = getCurrentUser();
-        if (!storedUser) {
+        const localUser = getCurrentUser();
+        if (!localUser) {
           logoutUser();
           clearAuthSession();
           setUserData(null);
@@ -213,11 +235,30 @@ export default function App() {
   };
 
   // Set authenticated user data and synchronize state
-  const handleUserAuthenticated = (user) => {
+  const handleUserAuthenticated = async (user) => {
     if (user) {
       setUserData(user);
       setCurrentUser(user);
       setActiveAttempt(getLatestAttempt(user?.uid || user?.id));
+
+      // Synchronize with backend API to ensure access token and HttpOnly refresh cookie exist
+      try {
+        if (!getInMemoryAccessToken()) {
+          const authRes = await apiLoginUser({
+            email: user.email,
+            isGoogleSso: true,
+            name: user.name || 'User'
+          });
+          if (authRes.success && authRes.data?.user) {
+            user = { ...user, ...authRes.data.user };
+            setUserData(user);
+            setCurrentUser(user);
+          }
+        }
+      } catch (err) {
+        console.warn('[App] Backend auth sync notice:', err);
+      }
+
       setView(resolveViewForUser(user));
     }
   };
@@ -375,6 +416,15 @@ export default function App() {
           />
         );
       case 'admin':
+        if (!currentUserData) {
+          return (
+            <AuthView 
+              setView={setView} 
+              setUserData={handleUserAuthenticated} 
+              setUserRole={setUserRole}
+            />
+          );
+        }
         // Guard: Students cannot access Admin portal
         if (userRole === USER_ROLES.STUDENT) {
           return (

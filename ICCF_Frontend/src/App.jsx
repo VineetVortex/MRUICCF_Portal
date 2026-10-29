@@ -13,15 +13,15 @@ import CertificateView from './views/CertificateView';
 import AdminView from './views/AdminView';
 import FacultyView from './views/FacultyView';
 
-import { 
-  USER_ROLES, 
-  getCurrentUser, 
-  setCurrentUser, 
+import {
+  USER_ROLES,
+  getCurrentUser,
+  setCurrentUser,
   logoutUser,
-  getStoredAssessments, 
+  getStoredAssessments,
   getStoredAttempts,
   getLatestAttempt,
-  handleSeedData 
+  handleSeedData
 } from './lib/storage';
 import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from './lib/authClient';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
@@ -53,7 +53,7 @@ export default function App() {
   // Current view state: Always open on Landing first (sequence: Landing -> Login -> Dashboard)
   const [currentUserData, setUserData] = useState(() => getCurrentUser());
   const [currentView, setView] = useState('landing');
-  
+
   // User & Role State adhering to COMPLETE_DOCUMENTATION.md
   // Roles: 'student' | 'dept_head' | 'core_team' | 'system_admin'
   const userRole = currentUserData?.role || USER_ROLES.STUDENT;
@@ -160,20 +160,42 @@ export default function App() {
     }
 
     // 2. Also restore backend custom session if available
-    initAuthSession().then((restoredUser) => {
+    initAuthSession().then(async (restoredUser) => {
       if (restoredUser) {
         setUserData(restoredUser);
         setCurrentUser(restoredUser);
         setActiveAttempt(getLatestAttempt(restoredUser?.uid || restoredUser?.id));
         setView((prev) => (prev === 'landing' || prev === 'auth' ? resolveViewForUser(restoredUser) : prev));
+      } else {
+        // Backend refresh returned unauthenticated. Check if local user exists in storage
+        const localUser = getCurrentUser();
+        if (localUser && localUser.email) {
+          setUserData(localUser);
+          setActiveAttempt(getLatestAttempt(localUser?.uid || localUser?.id));
+          setView((prev) => (prev === 'landing' || prev === 'auth' ? resolveViewForUser(localUser) : prev));
+          // Proactively re-establish backend access token and HttpOnly refresh session if missing
+          if (!getInMemoryAccessToken()) {
+            apiLoginUser({
+              email: localUser.email,
+              isGoogleSso: true,
+              name: localUser.name || 'User'
+            }).then((res) => {
+              if (res?.success && res.data?.user) {
+                const merged = { ...localUser, ...res.data.user };
+                setUserData(merged);
+                setCurrentUser(merged);
+              }
+            }).catch(() => { });
+          }
+        }
       }
     });
 
     // Listen for session expiration events
     const unsubscribe = subscribeAuth((event, data) => {
       if (event === 'session_expired') {
-        const storedUser = getCurrentUser();
-        if (!storedUser) {
+        const localUser = getCurrentUser();
+        if (!localUser) {
           logoutUser();
           clearAuthSession();
           setUserData(null);
@@ -213,11 +235,30 @@ export default function App() {
   };
 
   // Set authenticated user data and synchronize state
-  const handleUserAuthenticated = (user) => {
+  const handleUserAuthenticated = async (user) => {
     if (user) {
       setUserData(user);
       setCurrentUser(user);
       setActiveAttempt(getLatestAttempt(user?.uid || user?.id));
+
+      // Synchronize with backend API to ensure access token and HttpOnly refresh cookie exist
+      try {
+        if (!getInMemoryAccessToken()) {
+          const authRes = await apiLoginUser({
+            email: user.email,
+            isGoogleSso: true,
+            name: user.name || 'User'
+          });
+          if (authRes.success && authRes.data?.user) {
+            user = { ...user, ...authRes.data.user };
+            setUserData(user);
+            setCurrentUser(user);
+          }
+        }
+      } catch (err) {
+        console.warn('[App] Backend auth sync notice:', err);
+      }
+
       setView(resolveViewForUser(user));
     }
   };
@@ -230,26 +271,26 @@ export default function App() {
         return <SplashView setView={setView} />;
       case 'auth':
         return (
-          <AuthView 
-            setView={setView} 
-            setUserData={handleUserAuthenticated} 
+          <AuthView
+            setView={setView}
+            setUserData={handleUserAuthenticated}
             setUserRole={setUserRole}
           />
         );
       case 'faculty':
         if (!currentUserData) {
           return (
-            <AuthView 
-              setView={setView} 
-              setUserData={handleUserAuthenticated} 
+            <AuthView
+              setView={setView}
+              setUserData={handleUserAuthenticated}
               setUserRole={setUserRole}
             />
           );
         }
         if (userRole === USER_ROLES.STUDENT) {
           return (
-            <DashboardView 
-              setView={setView} 
+            <DashboardView
+              setView={setView}
               currentUser={currentUserData}
               userRole={userRole}
               activeAttempt={activeAttempt}
@@ -269,9 +310,9 @@ export default function App() {
       case 'dashboard':
         if (!currentUserData) {
           return (
-            <AuthView 
-              setView={setView} 
-              setUserData={handleUserAuthenticated} 
+            <AuthView
+              setView={setView}
+              setUserData={handleUserAuthenticated}
               setUserRole={setUserRole}
             />
           );
@@ -288,8 +329,8 @@ export default function App() {
         }
         if (userRole !== USER_ROLES.STUDENT) {
           return (
-            <AdminView 
-              setView={setView} 
+            <AdminView
+              setView={setView}
               currentUser={currentUserData}
               userRole={userRole}
               setUserRole={setUserRole}
@@ -300,8 +341,8 @@ export default function App() {
           );
         }
         return (
-          <DashboardView 
-            setView={setView} 
+          <DashboardView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             activeAttempt={activeAttempt}
@@ -311,8 +352,8 @@ export default function App() {
         );
       case 'assessment':
         return (
-          <AssessmentView 
-            setView={setView} 
+          <AssessmentView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             activeAssessment={activeAssessment}
@@ -327,8 +368,8 @@ export default function App() {
         );
       case 'results':
         return (
-          <ResultsView 
-            setView={setView} 
+          <ResultsView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             activeAttempt={activeAttempt}
@@ -348,8 +389,8 @@ export default function App() {
         }
         if (userRole !== USER_ROLES.STUDENT) {
           return (
-            <AdminView 
-              setView={setView} 
+            <AdminView
+              setView={setView}
               currentUser={currentUserData}
               userRole={userRole}
               onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
@@ -359,27 +400,36 @@ export default function App() {
           );
         }
         return (
-          <DevelopmentView 
-            setView={setView} 
+          <DevelopmentView
+            setView={setView}
             currentUser={currentUserData}
             activeAttempt={activeAttempt}
           />
         );
       case 'certificate':
         return (
-          <CertificateView 
-            setView={setView} 
+          <CertificateView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             activeAttempt={activeAttempt}
           />
         );
       case 'admin':
+        if (!currentUserData) {
+          return (
+            <AuthView
+              setView={setView}
+              setUserData={handleUserAuthenticated}
+              setUserRole={setUserRole}
+            />
+          );
+        }
         // Guard: Students cannot access Admin portal
         if (userRole === USER_ROLES.STUDENT) {
           return (
-            <DashboardView 
-              setView={setView} 
+            <DashboardView
+              setView={setView}
               currentUser={currentUserData}
               userRole={userRole}
               activeAttempt={activeAttempt}
@@ -400,8 +450,8 @@ export default function App() {
           );
         }
         return (
-          <AdminView 
-            setView={setView} 
+          <AdminView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             setUserRole={setUserRole}
@@ -423,8 +473,8 @@ export default function App() {
         }
         if (userRole !== USER_ROLES.STUDENT) {
           return (
-            <AdminView 
-              setView={setView} 
+            <AdminView
+              setView={setView}
               currentUser={currentUserData}
               userRole={userRole}
               setUserRole={setUserRole}
@@ -435,8 +485,8 @@ export default function App() {
           );
         }
         return (
-          <DashboardView 
-            setView={setView} 
+          <DashboardView
+            setView={setView}
             currentUser={currentUserData}
             userRole={userRole}
             activeAttempt={activeAttempt}
@@ -453,10 +503,10 @@ export default function App() {
     <div className="app-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top Navbar */}
       {!isFullscreenView && (
-        <Navbar 
-          currentView={currentView} 
-          setView={setView} 
-          userRole={userRole} 
+        <Navbar
+          currentView={currentView}
+          setView={setView}
+          userRole={userRole}
           setUserRole={setUserRole}
           currentUser={currentUserData}
           onLogout={handleLogout}

@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { getDb } from '../db/index.js';
 import { config } from '../config/index.js';
 import { logAuditEvent } from './auditService.js';
@@ -6,6 +8,8 @@ import { logAuditEvent } from './auditService.js';
 export interface RefreshSessionRecord {
   id: string;
   userId: string;
+  userEmail?: string;
+  userSnapshot?: any;
   tokenHash: string;
   tokenFamily: string;
   isRevoked: boolean;
@@ -14,10 +18,76 @@ export interface RefreshSessionRecord {
   lastUsedAt: Date;
   userAgent?: string;
   ipAddress?: string;
+  rotatedToHash?: string;
+  rotatedToToken?: string;
 }
 
 // In-memory fallback cache for refresh sessions to ensure resilience
 const inMemorySessionStore = new Map<string, RefreshSessionRecord>();
+
+const DATA_DIR = path.resolve(process.cwd(), 'data');
+const SESSIONS_FILE = path.join(DATA_DIR, 'refresh_sessions.json');
+
+function ensureDataDir(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (_) {}
+}
+
+function loadSessionsFromDisk(): void {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const raw = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+      const list: any[] = JSON.parse(raw);
+      const now = new Date();
+      let loadedCount = 0;
+      for (const item of list) {
+        const expiresAt = new Date(item.expiresAt);
+        // Only restore unexpired sessions
+        if (expiresAt > now) {
+          inMemorySessionStore.set(item.tokenHash, {
+            id: item.id,
+            userId: item.userId,
+            userEmail: item.userEmail,
+            userSnapshot: item.userSnapshot,
+            tokenHash: item.tokenHash,
+            tokenFamily: item.tokenFamily,
+            isRevoked: Boolean(item.isRevoked),
+            expiresAt,
+            createdAt: new Date(item.createdAt),
+            lastUsedAt: new Date(item.lastUsedAt),
+            userAgent: item.userAgent,
+            ipAddress: item.ipAddress,
+            rotatedToHash: item.rotatedToHash,
+            rotatedToToken: item.rotatedToToken,
+          });
+          loadedCount++;
+        }
+      }
+      if (loadedCount > 0) {
+        console.log(`[RefreshService] Restored ${loadedCount} active sessions from disk.`);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[RefreshService] Notice loading sessions from disk:', err?.message || err);
+  }
+}
+
+function persistSessionsToDisk(): void {
+  try {
+    ensureDataDir();
+    const array = Array.from(inMemorySessionStore.values());
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(array, null, 2), 'utf-8');
+  } catch (err: any) {
+    console.warn('[RefreshService] Notice saving sessions to disk:', err?.message || err);
+  }
+}
+
+// Initialise session store from disk on module import
+loadSessionsFromDisk();
 
 /**
  * Generates a 256-bit cryptographically secure random refresh token
@@ -38,10 +108,14 @@ export function hashToken(token: string): string {
  */
 export async function createRefreshSession({
   userId,
+  userEmail,
+  userSnapshot,
   userAgent,
   ipAddress,
 }: {
   userId: string;
+  userEmail?: string;
+  userSnapshot?: any;
   userAgent?: string;
   ipAddress?: string;
 }): Promise<{ rawToken: string; expiresAt: Date; tokenFamily: string }> {
@@ -55,6 +129,8 @@ export async function createRefreshSession({
   const record: RefreshSessionRecord = {
     id: sessionId,
     userId,
+    userEmail,
+    userSnapshot,
     tokenHash,
     tokenFamily,
     isRevoked: false,
@@ -65,8 +141,9 @@ export async function createRefreshSession({
     ipAddress,
   };
 
-  // 1. In-memory cache for 0ms lookup & fallback resilience
+  // 1. In-memory cache + persistent disk store for restart resilience
   inMemorySessionStore.set(tokenHash, record);
+  persistSessionsToDisk();
 
   // 2. Persist to database if available
   try {
@@ -84,7 +161,7 @@ export async function createRefreshSession({
       ip_address: ipAddress || null,
     });
   } catch (err: any) {
-    console.warn('[RefreshService] Notice persisting session to DB, using in-memory store:', err.message);
+    // Non-fatal: Supabase refresh_sessions table optional; disk persistence covers dev & fallback
   }
 
   logAuditEvent('AUTH_LOG', `Refresh session created for user ${userId}`, userId, {
@@ -98,7 +175,8 @@ export async function createRefreshSession({
 
 /**
  * Rotates an existing refresh token:
- * - Detects reuse of invalidated/revoked tokens and revokes the whole token family
+ * - Employs a 15-second grace window for concurrent requests / React StrictMode mounting
+ * - Detects malicious reuse outside the grace window and revokes the whole token family
  * - Replaces the old token with a newly generated one in the same family
  */
 export async function rotateRefreshSession({
@@ -109,7 +187,14 @@ export async function rotateRefreshSession({
   rawToken: string;
   userAgent?: string;
   ipAddress?: string;
-}): Promise<{ newRawToken: string; userId: string; expiresAt: Date; tokenFamily: string }> {
+}): Promise<{
+  newRawToken: string;
+  userId: string;
+  userEmail?: string;
+  userSnapshot?: any;
+  expiresAt: Date;
+  tokenFamily: string;
+}> {
   if (!rawToken) {
     throw new Error('Refresh token is required');
   }
@@ -130,6 +215,7 @@ export async function rotateRefreshSession({
       sessionRecord = {
         id: data.id,
         userId: data.user_id,
+        userEmail: data.user_email,
         tokenHash: data.token_hash,
         tokenFamily: data.token_family,
         isRevoked: Boolean(data.is_revoked),
@@ -144,27 +230,74 @@ export async function rotateRefreshSession({
     // Database query failed, check in-memory store
   }
 
-  // Fallback to in-memory store
-  if (!sessionRecord) {
-    sessionRecord = inMemorySessionStore.get(incomingHash) || null;
+  // Fallback to in-memory store or merge memory grace pointers
+  const memRecord = inMemorySessionStore.get(incomingHash);
+  if (memRecord) {
+    sessionRecord = {
+      ...(sessionRecord || {}),
+      ...memRecord,
+      rotatedToHash: memRecord.rotatedToHash,
+      rotatedToToken: memRecord.rotatedToToken,
+      userEmail: memRecord.userEmail || sessionRecord?.userEmail,
+      userSnapshot: memRecord.userSnapshot || sessionRecord?.userSnapshot,
+    };
   }
 
   if (!sessionRecord) {
+    console.warn('[RefreshService Diagnostic] Session record NOT FOUND for incoming token hash');
     throw new Error('Invalid or unknown refresh token session');
   }
 
-  // --- REUSE DETECTION ---
-  // If an already revoked token is used again, someone may have intercepted the old token!
+  // --- REUSE DETECTION WITH CONCURRENT GRACE WINDOW ---
   if (sessionRecord.isRevoked) {
+    const now = Date.now();
+    const rotatedAt = sessionRecord.lastUsedAt ? new Date(sessionRecord.lastUsedAt).getTime() : 0;
+    const GRACE_PERIOD_MS = 15000; // 15-second grace window for concurrent network requests
+
+    const sameClient = !userAgent || !sessionRecord.userAgent || userAgent === sessionRecord.userAgent;
+    const activeChild = sessionRecord.rotatedToHash ? inMemorySessionStore.get(sessionRecord.rotatedToHash) : null;
+
+    console.log('[RefreshService Diagnostic] Revoked token presented:', {
+      tokenFamily: sessionRecord.tokenFamily,
+      elapsedMs: now - rotatedAt,
+      withinGrace: (now - rotatedAt) <= GRACE_PERIOD_MS,
+      hasRotatedToken: Boolean(sessionRecord.rotatedToToken),
+      sameClient,
+      hasActiveChild: Boolean(activeChild),
+      activeChildRevoked: activeChild ? activeChild.isRevoked : null,
+    });
+
+    if (
+      now - rotatedAt <= GRACE_PERIOD_MS &&
+      sessionRecord.rotatedToToken &&
+      sameClient &&
+      activeChild &&
+      !activeChild.isRevoked &&
+      new Date() < activeChild.expiresAt
+    ) {
+      console.log('[RefreshService Diagnostic] GRACE WINDOW ACTIVATED: Returning existing rotated child token');
+      // Return the active already-rotated token within the grace window
+      return {
+        newRawToken: sessionRecord.rotatedToToken,
+        userId: sessionRecord.userId,
+        userEmail: sessionRecord.userEmail,
+        userSnapshot: sessionRecord.userSnapshot,
+        expiresAt: activeChild.expiresAt,
+        tokenFamily: sessionRecord.tokenFamily,
+      };
+    }
+
+    // Genuine reuse attack or presentation outside grace window
     const familyToRevoke = sessionRecord.tokenFamily;
     console.error(`[SECURITY ALERT] Refresh token reuse detected for family ${familyToRevoke}! Revoking entire family.`);
 
     // Revoke all in-memory sessions with this family
-    for (const [hash, s] of inMemorySessionStore.entries()) {
+    for (const [_, s] of inMemorySessionStore.entries()) {
       if (s.tokenFamily === familyToRevoke) {
         s.isRevoked = true;
       }
     }
+    persistSessionsToDisk();
 
     // Revoke all DB sessions with this family
     try {
@@ -190,12 +323,23 @@ export async function rotateRefreshSession({
   // Check Expiration
   if (new Date() > sessionRecord.expiresAt) {
     sessionRecord.isRevoked = true;
+    persistSessionsToDisk();
     throw new Error('Refresh session has expired. Please sign in again.');
   }
 
-  // Invalidate the old token
+  // Generate new rotated token in the SAME family
+  const newRawToken = generateRefreshToken();
+  const newHash = hashToken(newRawToken);
+  const newSessionId = crypto.randomUUID();
+  const now = new Date();
+  const newExpiresAt = new Date(now.getTime() + config.jwt.refreshExpiresInDays * 24 * 60 * 60 * 1000);
+
+  // Invalidate the old token and attach grace pointer
   sessionRecord.isRevoked = true;
-  sessionRecord.lastUsedAt = new Date();
+  sessionRecord.lastUsedAt = now;
+  sessionRecord.userAgent = userAgent || sessionRecord.userAgent;
+  sessionRecord.rotatedToHash = newHash;
+  sessionRecord.rotatedToToken = newRawToken;
   inMemorySessionStore.set(incomingHash, sessionRecord);
 
   try {
@@ -208,16 +352,11 @@ export async function rotateRefreshSession({
     // Non-fatal
   }
 
-  // Generate new rotated token in the SAME family
-  const newRawToken = generateRefreshToken();
-  const newHash = hashToken(newRawToken);
-  const newSessionId = crypto.randomUUID();
-  const now = new Date();
-  const newExpiresAt = new Date(now.getTime() + config.jwt.refreshExpiresInDays * 24 * 60 * 60 * 1000);
-
   const newRecord: RefreshSessionRecord = {
     id: newSessionId,
     userId: sessionRecord.userId,
+    userEmail: sessionRecord.userEmail,
+    userSnapshot: sessionRecord.userSnapshot,
     tokenHash: newHash,
     tokenFamily: sessionRecord.tokenFamily, // Preserve family
     isRevoked: false,
@@ -229,6 +368,7 @@ export async function rotateRefreshSession({
   };
 
   inMemorySessionStore.set(newHash, newRecord);
+  persistSessionsToDisk();
 
   try {
     const db = getDb();
@@ -251,6 +391,8 @@ export async function rotateRefreshSession({
   return {
     newRawToken,
     userId: sessionRecord.userId,
+    userEmail: sessionRecord.userEmail,
+    userSnapshot: sessionRecord.userSnapshot,
     expiresAt: newExpiresAt,
     tokenFamily: sessionRecord.tokenFamily,
   };
@@ -267,6 +409,7 @@ export async function revokeRefreshSession(rawToken: string): Promise<void> {
   if (mem) {
     mem.isRevoked = true;
   }
+  persistSessionsToDisk();
 
   try {
     const db = getDb();
@@ -288,6 +431,7 @@ export async function revokeAllSessionsForUser(userId: string): Promise<void> {
       s.isRevoked = true;
     }
   }
+  persistSessionsToDisk();
 
   try {
     const db = getDb();

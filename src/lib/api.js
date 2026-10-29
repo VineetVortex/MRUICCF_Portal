@@ -10,7 +10,7 @@ const ENV_API_URL = import.meta.env.VITE_API_URL || '';
 const isProd = import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'));
 const API_BASE_URL = (isProd && (!ENV_API_URL || ENV_API_URL.includes('localhost:5000')))
   ? 'https://mruiccf-portal.onrender.com/api'
-  : (ENV_API_URL || '/api');
+  : (ENV_API_URL && !ENV_API_URL.includes('localhost:5000') ? ENV_API_URL.replace(/\/$/, '') : '/api');
 
 /**
  * Health check test
