@@ -562,3 +562,52 @@ export async function apiGetDepartmentAnalytics() {
   }
 }
 
+/**
+ * Submit Beta Test Student Feedback
+ */
+export async function apiSubmitFeedback(feedbackData) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(feedbackData)
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn('[API] Feedback submission offline fallback:', err);
+    // Save to localStorage so feedback is never lost
+    try {
+      const existing = JSON.parse(localStorage.getItem('iccf_beta_feedbacks') || '[]');
+      existing.unshift({
+        id: `fb_local_${Date.now()}`,
+        ...feedbackData,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('iccf_beta_feedbacks', JSON.stringify(existing));
+    } catch (_) {}
+    return { success: true, offline: true };
+  }
+}
+
+/**
+ * Fetch Beta Test Feedbacks for Admin Portal
+ */
+export async function apiGetFeedbacks() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/feedback`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.feedbacks || [];
+    }
+  } catch (err) {
+    console.warn('[API] Fetch feedbacks fallback:', err);
+  }
+  // LocalStorage fallback
+  try {
+    return JSON.parse(localStorage.getItem('iccf_beta_feedbacks') || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+

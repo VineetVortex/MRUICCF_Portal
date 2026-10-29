@@ -3,9 +3,10 @@ import {
   ClipboardList, CheckCircle2, Award, Target, ArrowRight,
   Calendar, Clock, ChevronRight, TrendingUp, AlertCircle,
   RotateCcw, History, FileCheck, Sparkles, BookOpen, X, Info,
-  Zap, Sun, Moon, Sunset, ExternalLink
+  Zap, Sun, Moon, Sunset, ExternalLink, MessageSquare
 } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
+import BetaFeedbackModal from '../components/BetaFeedbackModal';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
 import { getStoredAttempts, getStoredAssessments } from '../lib/storage';
 import { CERTIFICATION_THRESHOLD, getCompetencyLevel } from '../lib/scoring';
@@ -83,10 +84,41 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
   const isCertified = overallScore !== null && overallScore >= CERTIFICATION_THRESHOLD;
   const levelInfo = overallScore !== null ? getCompetencyLevel(overallScore) : null;
 
-  const competencyData = latestAttempt?.competencyScores || COMPETENCIES_DATA.map(c => ({ ...c, score: 0 }));
-  const sortedByScore = latestAttempt ? [...competencyData].sort((a, b) => b.score - a.score) : [];
-  const topStrengths = sortedByScore.slice(0, 3);
-  const developmentAreas = latestAttempt ? [...competencyData].sort((a, b) => a.score - b.score).slice(0, 3) : [];
+  // Authoritative 15-dimension competency aggregation across all attempts
+  const competencyScoreMap = {};
+  if (latestAttempt?.competencyScores && Array.isArray(latestAttempt.competencyScores)) {
+    latestAttempt.competencyScores.forEach(cs => {
+      if (cs.id !== undefined) competencyScoreMap[cs.id] = cs.score;
+      if (cs.name) competencyScoreMap[cs.name] = cs.score;
+    });
+  }
+  userAttempts.forEach(att => {
+    if (att.skillId && typeof att.overallScore === 'number') {
+      if (competencyScoreMap[att.skillId] === undefined) {
+        competencyScoreMap[att.skillId] = Math.round(Number(att.overallScore));
+      }
+    }
+    if (Array.isArray(att.competencyScores)) {
+      att.competencyScores.forEach(cs => {
+        if (cs.id && competencyScoreMap[cs.id] === undefined && typeof cs.score === 'number') {
+          competencyScoreMap[cs.id] = Math.round(Number(cs.score));
+        }
+      });
+    }
+  });
+
+  const competencyData = COMPETENCIES_DATA.map(c => ({
+    id: c.id,
+    name: c.name,
+    univAvg: c.univAvg || 72,
+    score: competencyScoreMap[c.id] ?? (competencyScoreMap[c.name] ?? 0)
+  }));
+
+  const attemptedCompetencies = competencyData.filter(c => competencyScoreMap[c.id] !== undefined || competencyScoreMap[c.name] !== undefined);
+  const sortedByScore = [...(attemptedCompetencies.length > 0 ? attemptedCompetencies : competencyData)].sort((a, b) => b.score - a.score);
+  const topStrengths = sortedByScore.filter(c => c.score >= 50).slice(0, 3);
+  const developmentAreas = [...(attemptedCompetencies.length > 0 ? attemptedCompetencies : competencyData)].sort((a, b) => a.score - b.score).slice(0, 3);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const availableAssessments = getStoredAssessments().filter(a => a.active);
 
@@ -241,13 +273,35 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
             {isCertified && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '9999px', backgroundColor: 'rgba(22,163,74,0.25)', border: '1px solid rgba(22,163,74,0.4)' }}>
                 <CheckCircle2 size={15} color="#4ADE80" />
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#4ADE80' }}>Certified</span>
               </div>
             )}
+            <button
+              onClick={() => setShowFeedbackModal(true)}
+              style={{
+                padding: '11px 18px',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(255,255,255,0.18)',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                border: '1px solid rgba(255,255,255,0.3)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backdropFilter: 'blur(8px)',
+                transition: 'all 0.15s ease'
+              }}
+              title="Share feedback on exam and dashboard during Beta"
+            >
+              <MessageSquare size={14} />
+              <span>Beta Feedback</span>
+            </button>
             <button
               onClick={() => {
                 if (setActiveAssessment && availableAssessments[0]) setActiveAssessment(availableAssessments[0]);
@@ -742,6 +796,13 @@ export default function DashboardView({ setView, currentUser, userRole, activeAt
           </div>
         </div>
       )}
+
+      {/* ── Beta Test Feedback Modal ── */}
+      <BetaFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

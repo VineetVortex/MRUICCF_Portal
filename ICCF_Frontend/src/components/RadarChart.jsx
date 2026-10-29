@@ -1,11 +1,27 @@
 import React, { useState } from 'react';
+import { COMPETENCIES_DATA } from '../data/assessmentData';
 
 export default function RadarChart({ data, size = 420 }) {
   const [hoveredSkill, setHoveredSkill] = useState(null);
 
-  if (!data || data.length === 0) return null;
+  // Defensive normalization: radar chart requires full polygon dimensions (15 competencies)
+  let chartData = data;
+  if (!chartData || chartData.length < 3) {
+    const scoreMap = {};
+    if (Array.isArray(chartData)) {
+      chartData.forEach(d => {
+        if (d) scoreMap[d.id || d.name] = d.score;
+      });
+    }
+    chartData = COMPETENCIES_DATA.map(c => ({
+      id: c.id,
+      name: c.name,
+      univAvg: c.univAvg || 72,
+      score: scoreMap[c.id] ?? (scoreMap[c.name] ?? 0)
+    }));
+  }
 
-  const totalPoints = data.length;
+  const totalPoints = chartData.length;
   const center = size / 2;
   const radius = size * 0.36; // leave room for text labels
   const levels = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -20,20 +36,20 @@ export default function RadarChart({ data, size = 420 }) {
 
   // Generate grid polygons
   const gridPolygons = levels.map((lvl) => {
-    return data.map((_, i) => {
+    return chartData.map((_, i) => {
       const { x, y } = getCoordinates(lvl * 100, i);
       return `${x},${y}`;
     }).join(' ');
   });
 
   // Generate Student Polygon
-  const studentPoints = data.map((item, i) => {
+  const studentPoints = chartData.map((item, i) => {
     const { x, y } = getCoordinates(item.score, i);
     return `${x},${y}`;
   }).join(' ');
 
   // Generate University Average Polygon
-  const univPoints = data.map((item, i) => {
+  const univPoints = chartData.map((item, i) => {
     const { x, y } = getCoordinates(item.univAvg || 70, i);
     return `${x},${y}`;
   }).join(' ');
@@ -57,7 +73,7 @@ export default function RadarChart({ data, size = 420 }) {
         ))}
 
         {/* Axis spokes */}
-        {data.map((item, i) => {
+        {chartData.map((item, i) => {
           const { x, y } = getCoordinates(100, i);
           return (
             <line
@@ -91,7 +107,7 @@ export default function RadarChart({ data, size = 420 }) {
         />
 
         {/* Interactive Dots for Student */}
-        {data.map((item, i) => {
+        {chartData.map((item, i) => {
           const { x, y } = getCoordinates(item.score, i);
           const isHovered = hoveredSkill?.name === item.name;
           return (
@@ -117,7 +133,7 @@ export default function RadarChart({ data, size = 420 }) {
         })}
 
         {/* Axis Labels */}
-        {data.map((item, i) => {
+        {chartData.map((item, i) => {
           const angle = (Math.PI * 2 / totalPoints) * i - Math.PI / 2;
           const labelDist = radius + 22;
           const lx = center + labelDist * Math.cos(angle);

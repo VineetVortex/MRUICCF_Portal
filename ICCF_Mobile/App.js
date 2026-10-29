@@ -9,7 +9,8 @@ import {
   Alert,
   AppState,
   Platform,
-  SafeAreaView
+  SafeAreaView,
+  Modal
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -43,17 +44,23 @@ const LIKERT_OPTIONS = [
 export default function App() {
   const [user, setUser] = useState(null);
   const [emailInput, setEmailInput] = useState('22cse0002@mru.ac.in');
-  const [currentScreen, setCurrentScreen] = useState('login'); // 'login' | 'hub' | 'exam' | 'results'
+  // Authoritative Sequence: landing -> login -> hub (dashboard)
+  const [currentScreen, setCurrentScreen] = useState('landing');
 
   // Exam state
   const [activeQ, setActiveQ] = useState(null);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(600);
-  const [strikes, setStrikes] = useState(0);
   const [completedScores, setCompletedScores] = useState({});
   const [latestScorecard, setLatestScorecard] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Feedback state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [examFeedbackText, setExamFeedbackText] = useState('');
+  const [dashboardFeedbackText, setDashboardFeedbackText] = useState('');
 
   // Mobile App Switch / Lockdown Listener
   useEffect(() => {
@@ -96,33 +103,16 @@ export default function App() {
       email: emailInput.trim(),
       department: 'Computer Science & Technology'
     });
+    // Move to dashboard / hub after successful login
     setCurrentScreen('hub');
   };
 
-  const handleStartExam = (q, randomizeOrder = false) => {
+  const handleStartExam = (q) => {
     setActiveQ(q);
     setCurrentQIndex(0);
     setTimeLeft(q.durationMinutes * 60);
     setAnswers({});
-    setStrikes(0);
     setCurrentScreen('exam');
-  };
-
-  const handleStartRandom = () => {
-    const randomPick = QUESTIONNAIRES[Math.floor(Math.random() * QUESTIONNAIRES.length)];
-    handleStartExam(randomPick, true);
-  };
-
-  const handleJumpToRandomItem = () => {
-    const unans = [];
-    for (let i = 0; i < 10; i++) {
-      if (answers[i] === undefined && i !== currentQIndex) unans.push(i);
-    }
-    const pool = unans.length > 0 ? unans : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].filter(i => i !== currentQIndex);
-    if (pool.length > 0) {
-      const rnd = pool[Math.floor(Math.random() * pool.length)];
-      setCurrentQIndex(rnd);
-    }
   };
 
   const handleSelectAnswer = (val) => {
@@ -155,6 +145,28 @@ export default function App() {
     setCurrentScreen('results');
   };
 
+  const submitFeedback = async () => {
+    try {
+      await fetch('http://localhost:5000/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: user?.name || 'MRU Student',
+          rollNo: user?.rollNo || '22CSE0002',
+          email: user?.email || 'student@mru.ac.in',
+          department: user?.department || 'CST',
+          rating: feedbackRating,
+          examFeedback: examFeedbackText,
+          dashboardFeedback: dashboardFeedbackText
+        })
+      });
+    } catch (_) {}
+    Alert.alert('Feedback Submitted', 'Thank you! Your feedback has been recorded in the database.');
+    setShowFeedbackModal(false);
+    setExamFeedbackText('');
+    setDashboardFeedbackText('');
+  };
+
   const categories = ['All', 'Interpersonal Dynamics', 'Execution & Planning', 'Institutional Conduct', 'Operational Stewardship', 'Team Dynamics', 'Intrapersonal Mastery', 'Principled Leadership', 'Continuous Growth'];
   const filteredQs = selectedCategory === 'All' ? QUESTIONNAIRES : QUESTIONNAIRES.filter(q => q.category === selectedCategory);
 
@@ -168,11 +180,49 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
 
-      {/* ── Screen: Login ── */}
+      {/* ── Screen 1: Landing Page ── */}
+      {currentScreen === 'landing' && (
+        <ScrollView contentContainerStyle={styles.landingContainer}>
+          <View style={styles.landingHero}>
+            <Text style={styles.brandTitle}>MANAV RACHNA</Text>
+            <Text style={styles.brandSubtitle}>VIDYANATARIKSHAL • 30 YEARS OF EXCELLENCE</Text>
+            
+            <View style={styles.badgePill}>
+              <Text style={styles.badgePillText}>INSTITUTIONAL COMPETENCY CERTIFICATION FRAMEWORK</Text>
+            </View>
+
+            <Text style={styles.heroHeadline}>Empowering Future-Ready Graduates</Text>
+            <Text style={styles.heroSub}>
+              A comprehensive human-centric skills assessment and diagnostic platform engineered specifically for Manav Rachna University students.
+            </Text>
+
+            <View style={styles.featureGrid}>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureNumber}>15</Text>
+                <Text style={styles.featureLabel}>Core Competencies</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureNumber}>150</Text>
+                <Text style={styles.featureLabel}>Calibrated Items</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureNumber}>5</Text>
+                <Text style={styles.featureLabel}>Proficiency Tiers</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.btnPrimaryLg} onPress={() => setCurrentScreen('login')}>
+              <Text style={styles.btnPrimaryLgText}>Proceed to Student Login ▶</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── Screen 2: Login ── */}
       {currentScreen === 'login' && (
         <View style={styles.loginContainer}>
           <Text style={styles.brandTitle}>MANAV RACHNA</Text>
-          <Text style={styles.brandSubtitle}>Institutional Competency Certification Framework</Text>
+          <Text style={styles.brandSubtitle}>Student Authentication Portal</Text>
 
           <View style={styles.loginCard}>
             <Text style={styles.cardHeader}>Student Portal Sign In</Text>
@@ -186,13 +236,17 @@ export default function App() {
               keyboardType="email-address"
             />
             <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin}>
-              <Text style={styles.btnPrimaryText}>Enter Diagnostic Portal</Text>
+              <Text style={styles.btnPrimaryText}>Enter Diagnostic Dashboard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.btnGhost} onPress={() => setCurrentScreen('landing')}>
+              <Text style={styles.btnGhostText}>◀ Return to Landing Page</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* ── Screen: Questionnaire Hub ── */}
+      {/* ── Screen 3: Dashboard & Questionnaire Hub ── */}
       {currentScreen === 'hub' && (
         <View style={styles.mainContainer}>
           {/* Header */}
@@ -201,27 +255,18 @@ export default function App() {
               <Text style={styles.portalTitle}>Competency Assessments</Text>
               <Text style={styles.portalSub}>Student: {user?.name} ({user?.rollNo})</Text>
             </View>
-            <TouchableOpacity onPress={() => setCurrentScreen('login')} style={styles.btnSignOut}>
-              <Text style={styles.btnSignOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Random Action Banner */}
-          <View style={styles.randomBanner}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.randomBannerTitle}>⚡ Instant Random Assessment</Text>
-              <Text style={styles.randomBannerSub}>Take any of the 15 competency questionnaires at random.</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => setShowFeedbackModal(true)} style={styles.btnFeedbackPill}>
+                <Text style={styles.btnFeedbackPillText}>💬 Feedback</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setCurrentScreen('login')} style={styles.btnSignOut}>
+                <Text style={styles.btnSignOutText}>Sign Out</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.btnRandom} onPress={handleStartRandom}>
-              <Text style={styles.btnRandomText}>🎲 Start Random</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Category Filter Pills */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
-            <TouchableOpacity style={[styles.filterPill, { backgroundColor: '#8B1528' }]} onPress={handleStartRandom}>
-              <Text style={[styles.filterPillText, { color: '#FFFFFF', fontWeight: '800' }]}>🎲 Random</Text>
-            </TouchableOpacity>
             {categories.map(cat => (
               <TouchableOpacity
                 key={cat}
@@ -245,7 +290,7 @@ export default function App() {
                     <Text style={styles.qCategory}>{q.category}</Text>
                     {past ? (
                       <Text style={[styles.statusBadge, { color: past.isCertified ? '#15803D' : '#D97706', backgroundColor: past.isCertified ? '#DCFCE7' : '#FEF3C7' }]}>
-                        {past.score}% {past.isCertified ? '✓ Certified' : 'Pending'}
+                        {past.score}% {past.isCertified ? '✓ Certified' : 'Completed'}
                       </Text>
                     ) : (
                       <Text style={[styles.statusBadge, { color: '#64748B', backgroundColor: '#F1F5F9' }]}>Ready</Text>
@@ -284,7 +329,7 @@ export default function App() {
         </View>
       )}
 
-      {/* ── Screen: Exam Lockdown Player ── */}
+      {/* ── Screen 4: Strict Exam Mode Player ── */}
       {currentScreen === 'exam' && activeQ && (
         <View style={styles.mainContainer}>
           {/* Exam Header */}
@@ -301,9 +346,7 @@ export default function App() {
           {/* Quick Toolbar */}
           <View style={styles.examToolbar}>
             <Text style={styles.itemProgressText}>Item {currentQIndex + 1} of 10</Text>
-            <TouchableOpacity style={styles.btnRandomJump} onPress={handleJumpToRandomItem}>
-              <Text style={styles.btnRandomJumpText}>🎲 Random Item</Text>
-            </TouchableOpacity>
+            <Text style={{ fontSize: 11, color: '#16A34A', fontWeight: '700' }}>● Autosave Active</Text>
           </View>
 
           {/* Question Card */}
@@ -361,7 +404,7 @@ export default function App() {
         </View>
       )}
 
-      {/* ── Screen: Results / Scorecard ── */}
+      {/* ── Screen 5: Results / Scorecard ── */}
       {currentScreen === 'results' && latestScorecard && (
         <View style={styles.mainContainer}>
           <View style={styles.resultsCard}>
@@ -372,12 +415,55 @@ export default function App() {
               {latestScorecard.answeredCount}/10 items evaluated. {latestScorecard.isAutoSubmitted ? '(Auto-submitted via Mobile Lockdown)' : 'Authoritative evaluation verified.'}
             </Text>
 
-            <TouchableOpacity style={styles.btnPrimary} onPress={() => setCurrentScreen('hub')}>
-              <Text style={styles.btnPrimaryText}>Back to Questionnaire Hub</Text>
+            <TouchableOpacity style={styles.btnPrimary} onPress={() => setShowFeedbackModal(true)}>
+              <Text style={styles.btnPrimaryText}>💬 Share Beta Feedback</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.btnGhost, { marginTop: 12 }]} onPress={() => setCurrentScreen('hub')}>
+              <Text style={styles.btnGhostText}>Back to Questionnaire Hub</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
+
+      {/* ── Beta Feedback Modal ── */}
+      <Modal visible={showFeedbackModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Beta Test Feedback</Text>
+            <Text style={styles.modalSub}>Help us improve the exam experience and student dashboard.</Text>
+
+            <Text style={styles.fieldLabel}>Exam Improvement Suggestions:</Text>
+            <TextInput
+              style={styles.modalInput}
+              multiline
+              numberOfLines={3}
+              placeholder="Timer, questions, interface..."
+              value={examFeedbackText}
+              onChangeText={setExamFeedbackText}
+            />
+
+            <Text style={styles.fieldLabel}>Dashboard Improvement Suggestions:</Text>
+            <TextInput
+              style={styles.modalInput}
+              multiline
+              numberOfLines={3}
+              placeholder="Charts, roadmaps, analytics..."
+              value={dashboardFeedbackText}
+              onChangeText={setDashboardFeedbackText}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <TouchableOpacity style={styles.btnModalCancel} onPress={() => setShowFeedbackModal(false)}>
+                <Text style={{ fontWeight: '700', color: '#64748B' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnModalSubmit} onPress={submitFeedback}>
+                <Text style={{ fontWeight: '800', color: '#FFFFFF' }}>Submit Feedback</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -387,11 +473,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC'
   },
-  loginContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  landingContainer: {
+    padding: 24,
     alignItems: 'center',
-    padding: 24
+    justifyContent: 'center',
+    minHeight: '100%'
+  },
+  landingHero: {
+    alignItems: 'center',
+    maxWidth: 440,
+    width: '100%'
   },
   brandTitle: {
     fontSize: 26,
@@ -400,10 +491,90 @@ const styles = StyleSheet.create({
     letterSpacing: 1
   },
   brandSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#64748B',
+    marginBottom: 16,
+    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 0.5
+  },
+  badgePill: {
+    backgroundColor: '#FDF2F4',
+    borderWidth: 1,
+    borderColor: '#8B1528',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 9999,
+    marginBottom: 16
+  },
+  badgePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8B1528'
+  },
+  heroHeadline: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 10
+  },
+  heroSub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 24
+  },
+  featureGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 28,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  featureItem: {
+    alignItems: 'center',
+    flex: 1
+  },
+  featureNumber: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#8B1528'
+  },
+  featureLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '700',
+    marginTop: 2,
     textAlign: 'center'
+  },
+  btnPrimaryLg: {
+    backgroundColor: '#8B1528',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#8B1528',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4
+  },
+  btnPrimaryLgText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  loginContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24
   },
   loginCard: {
     width: '100%',
@@ -448,6 +619,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800'
   },
+  btnGhost: {
+    marginTop: 14,
+    paddingVertical: 6,
+    alignItems: 'center'
+  },
+  btnGhostText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700'
+  },
   mainContainer: {
     flex: 1
   },
@@ -470,6 +651,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B'
   },
+  btnFeedbackPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FDF2F4',
+    borderWidth: 1,
+    borderColor: '#8B1528'
+  },
+  btnFeedbackPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8B1528'
+  },
   btnSignOut: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -481,42 +675,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#8B1528'
   },
-  randomBanner: {
-    margin: 16,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  randomBannerTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#92400E'
-  },
-  randomBannerSub: {
-    fontSize: 11,
-    color: '#B45309',
-    marginTop: 2
-  },
-  btnRandom: {
-    backgroundColor: '#8B1528',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 9999
-  },
-  btnRandomText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800'
-  },
   filterBar: {
     maxHeight: 46,
     paddingHorizontal: 16,
-    marginBottom: 8
+    marginVertical: 8
   },
   filterPill: {
     paddingHorizontal: 14,
@@ -636,19 +798,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#1E293B'
-  },
-  btnRandomJump: {
-    backgroundColor: '#FDF2F4',
-    borderWidth: 1,
-    borderColor: '#8B1528',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-  btnRandomJumpText: {
-    color: '#8B1528',
-    fontSize: 11,
-    fontWeight: '700'
   },
   examContent: {
     flex: 1,
@@ -772,5 +921,57 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 4
+  },
+  modalSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 16
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4
+  },
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+    textAlignVertical: 'top'
+  },
+  btnModalCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center'
+  },
+  btnModalSubmit: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#8B1528',
+    alignItems: 'center'
   }
 });

@@ -9,6 +9,7 @@ import analyticsRoutes from './analyticsRoutes.js';
 import auditRoutes from './auditRoutes.js';
 import aiRoutes from './aiRoutes.js';
 import facultyRoutes from './facultyRoutes.js';
+import feedbackRoutes from './feedbackRoutes.js';
 
 const apiRouter = Router();
 
@@ -22,6 +23,7 @@ apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/audit-logs', auditRoutes);
 apiRouter.use('/ai', aiRoutes);
 apiRouter.use('/faculty', facultyRoutes);
+apiRouter.use('/feedback', feedbackRoutes);
 
 // API Information Route
 apiRouter.get('/', (req, res) => {

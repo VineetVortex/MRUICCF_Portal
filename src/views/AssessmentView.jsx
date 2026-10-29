@@ -5,12 +5,13 @@ import {
   RotateCcw, BookOpen, ShieldAlert, Wifi, WifiOff, Maximize2, Minimize2,
   RefreshCw, CheckCircle, Lock, Unlock, Play, Pause, Award, ArrowRight,
   FileText, BarChart2, ShieldCheck, Layers, Users, Sparkle, ListFilter,
-  CheckCircle as CheckCircleIcon, ArrowLeft, Shuffle
+  CheckCircle as CheckCircleIcon, ArrowLeft, Shuffle, MessageSquare, Star
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { COMPETENCIES_DATA } from '../data/assessmentData';
 import { getStoredQuestions, saveAttempt, getQuestionnaireSettings, getSkillTimeLimit, getStoredAttempts } from '../lib/storage';
 import { calculateAttemptResults, calculateSingleSkillResults, CERTIFICATION_THRESHOLD, getCompetencyLevel } from '../lib/scoring';
+import BetaFeedbackModal from '../components/BetaFeedbackModal';
 import {
   apiStartOrResumeAttempt,
   apiAutosaveAttempt,
@@ -228,6 +229,7 @@ export default function AssessmentView({
   const [showSkillSubmitWarningModal, setShowSkillSubmitWarningModal] = useState(false);
   const [skillSubmitTarget, setSkillSubmitTarget] = useState(null);
   const [completedSkillModalData, setCompletedSkillModalData] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Pre-Exam Instruction & Strict Lockdown Briefing Modal
   const [showExamBriefingModal, setShowExamBriefingModal] = useState(false);
@@ -1280,63 +1282,37 @@ export default function AssessmentView({
             marginBottom: '18px'
           }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
-                  Individual Competency Questionnaires
-                </h2>
-                <button
-                  type="button"
-                  onClick={handleStartRandomQuestionnaire}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 14px',
-                    borderRadius: '9999px',
-                    backgroundColor: '#8B1528',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '0.78rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(139, 21, 40, 0.25)',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Randomly select any available questionnaire"
-                >
-                  <Sparkles size={14} />
-                  <span>Start Random Questionnaire</span>
-                </button>
-              </div>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1C1917', margin: 0 }}>
+                Individual Competency Questionnaires
+              </h2>
               <p style={{ fontSize: '0.85rem', color: '#78716C', margin: '4px 0 0 0' }}>
-                Select any individual questionnaire in any order, or click Start Random Questionnaire to let the system select one.
+                Select any individual competency questionnaire below. Take individual assessments or complete the full institutional evaluation.
               </p>
             </div>
 
-            {/* Category Pills Filter + Random Quick Trigger */}
+            {/* Category Pills Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={handleStartRandomQuestionnaire}
+                onClick={() => setShowFeedbackModal(true)}
                 style={{
                   padding: '6px 14px',
                   borderRadius: '9999px',
                   fontSize: '0.78rem',
-                  fontWeight: 800,
-                  border: '1.5px solid #8B1528',
-                  backgroundColor: '#8B1528',
-                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#475569',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  boxShadow: '0 2px 8px rgba(139, 21, 40, 0.25)',
                   transition: 'all 0.15s ease'
                 }}
-                title="Randomly pick and take any questionnaire right now"
+                title="Share your thoughts on the exam and dashboard"
               >
-                <Sparkles size={13} />
-                <span>🎲 Random Questionnaire</span>
+                <MessageSquare size={13} color="#8B1528" />
+                <span>Beta Feedback</span>
               </button>
               {categoriesList.map(cat => (
                 <button
@@ -1771,38 +1747,6 @@ export default function AssessmentView({
               </span>
             </div>
 
-            {/* Quick Test Fill (High Score) */}
-            <button
-              type="button"
-              onClick={() => autoFillAll('high')}
-              className="btn-secondary"
-              style={{ padding: '6px 10px', fontSize: '0.73rem', gap: '4px' }}
-              title="Quick test fill all questions"
-            >
-              <Zap size={12} color="#16A34A" /> Pass All
-            </button>
-
-            {/* Jump to Random Question */}
-            <button
-              type="button"
-              onClick={() => {
-                const unans = [];
-                for (let i = activeQDef.startIndex; i < activeQDef.endIndex; i++) {
-                  if (i !== currentIndex && answers[questionsList[i]?.id] === undefined) unans.push(i);
-                }
-                const pool = unans.length > 0 ? unans : Array.from({ length: activeQDef.endIndex - activeQDef.startIndex }, (_, idx) => activeQDef.startIndex + idx).filter(i => i !== currentIndex);
-                if (pool.length > 0) {
-                  const rndIdx = pool[Math.floor(Math.random() * pool.length)];
-                  handleNavigate(rndIdx);
-                }
-              }}
-              className="btn-secondary"
-              style={{ padding: '6px 10px', fontSize: '0.73rem', gap: '4px', color: '#8B1528' }}
-              title="Jump to a random question in this questionnaire"
-            >
-              <Shuffle size={12} color="#8B1528" /> Random Item
-            </button>
-
             {/* Fullscreen Status Indicator */}
             {isFullscreen ? (
               <span
@@ -2001,27 +1945,6 @@ export default function AssessmentView({
               </button>
 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const unans = [];
-                    for (let i = activeQDef.startIndex; i < activeQDef.endIndex; i++) {
-                      if (i !== currentIndex && answers[questionsList[i]?.id] === undefined) unans.push(i);
-                    }
-                    const pool = unans.length > 0 ? unans : Array.from({ length: activeQDef.endIndex - activeQDef.startIndex }, (_, idx) => activeQDef.startIndex + idx).filter(i => i !== currentIndex);
-                    if (pool.length > 0) {
-                      const rndIdx = pool[Math.floor(Math.random() * pool.length)];
-                      handleNavigate(rndIdx);
-                    }
-                  }}
-                  className="btn-secondary"
-                  style={{ padding: '11px 16px', fontSize: '0.88rem', gap: '6px', color: '#8B1528' }}
-                  title="Jump to a random question within this questionnaire"
-                >
-                  <Shuffle size={15} />
-                  <span>Random Item</span>
-                </button>
-
                 {/* Submit Individual Skill Questionnaire Button */}
                 <button
                   type="button"
@@ -2073,37 +1996,6 @@ export default function AssessmentView({
             <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1C1917', marginBottom: '12px' }}>
               Questionnaire Navigator
             </h3>
-
-            {/* Quick Switch to Random Questionnaire */}
-            <button
-              type="button"
-              onClick={() => {
-                const others = INDIVIDUAL_QUESTIONNAIRES.filter(q => q.id !== activeQuestionnaireId);
-                const randomPick = others[Math.floor(Math.random() * others.length)];
-                if (randomPick) handleOpenQuestionnaire(randomPick.id);
-              }}
-              style={{
-                marginBottom: '12px',
-                width: '100%',
-                padding: '7px 12px',
-                borderRadius: '8px',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                backgroundColor: '#FAF8F5',
-                border: '1px solid #ECE7DF',
-                color: '#8B1528',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease'
-              }}
-              title="Jump to another questionnaire at random"
-            >
-              <Sparkles size={12} color="#8B1528" />
-              <span>Switch to Random Questionnaire</span>
-            </button>
 
             {/* Active Questionnaire Selection Tabs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -2433,31 +2325,9 @@ export default function AssessmentView({
 
             {/* Random Question Shuffling Option */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                backgroundColor: shuffleQuestions ? '#FDF2F4' : '#FAF8F5',
-                border: shuffleQuestions ? '1.5px solid #8B1528' : '1px solid #ECE7DF',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={shuffleQuestions}
-                  onChange={(e) => setShuffleQuestions(e.target.checked)}
-                  style={{ accentColor: '#8B1528', width: '16px', height: '16px', cursor: 'pointer' }}
-                />
-                <Sparkles size={15} color="#8B1528" />
-                <span style={{ fontSize: '0.84rem', fontWeight: 700, color: shuffleQuestions ? '#8B1528' : '#374151' }}>
-                  Randomize question presentation order for this attempt
-                </span>
-              </label>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -2781,6 +2651,29 @@ export default function AssessmentView({
 
               <button
                 type="button"
+                onClick={() => setShowFeedbackModal(true)}
+                style={{
+                  width: '100%',
+                  padding: '11px',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  backgroundColor: '#FDF2F4',
+                  border: '1.5px solid #8B1528',
+                  color: '#8B1528',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <MessageSquare size={16} />
+                <span>Give Beta Feedback on Exam &amp; Dashboard</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setCompletedSkillModalData(null);
                   setActiveQuestionnaireId(null);
@@ -2794,6 +2687,14 @@ export default function AssessmentView({
           </div>
         </div>
       )}
+
+      {/* ── Beta Test Feedback Modal ── */}
+      <BetaFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        currentUser={currentUser}
+        assessmentContext={completedSkillModalData}
+      />
 
     </div>
   );

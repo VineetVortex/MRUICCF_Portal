@@ -50,9 +50,9 @@ export default function App() {
     return null;
   });
 
-  // Current view state: authenticated users go directly to their portal; guests see landing
+  // Current view state: Always open on Landing first (sequence: Landing -> Login -> Dashboard)
   const [currentUserData, setUserData] = useState(() => getCurrentUser());
-  const [currentView, setView] = useState(() => resolveViewForUser(getCurrentUser()));
+  const [currentView, setView] = useState('landing');
   
   // User & Role State adhering to COMPLETE_DOCUMENTATION.md
   // Roles: 'student' | 'dept_head' | 'core_team' | 'system_admin'
@@ -225,42 +225,6 @@ export default function App() {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'landing':
-        if (currentUserData) {
-          const target = resolveViewForUser(currentUserData);
-          if (target === 'faculty') {
-            return (
-              <FacultyView
-                setView={setView}
-                currentUser={currentUserData}
-                userRole={userRole}
-                onLogout={handleLogout}
-              />
-            );
-          }
-          if (target === 'admin') {
-            return (
-              <AdminView
-                setView={setView}
-                currentUser={currentUserData}
-                userRole={userRole}
-                setUserRole={setUserRole}
-                onAssessmentsUpdated={() => setAssessments(getStoredAssessments())}
-                setActiveAttempt={setActiveAttempt}
-                setActiveAssessment={setActiveAssessment}
-              />
-            );
-          }
-          return (
-            <DashboardView
-              setView={setView}
-              currentUser={currentUserData}
-              userRole={userRole}
-              activeAttempt={activeAttempt}
-              setActiveAttempt={setActiveAttempt}
-              setActiveAssessment={setActiveAssessment}
-            />
-          );
-        }
         return <LandingView setView={setView} currentUser={currentUserData} onLogout={handleLogout} />;
       case 'splash':
         return <SplashView setView={setView} />;
