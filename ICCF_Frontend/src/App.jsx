@@ -154,6 +154,9 @@ export default function App() {
       sb.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           processSupabaseSession(session);
+          if (typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
         }
       }).catch((e) => console.warn('[Supabase getSession error]:', e));
 
@@ -161,6 +164,9 @@ export default function App() {
       const { data } = sb.auth.onAuthStateChange((event, session) => {
         if (session && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
           processSupabaseSession(session);
+          if (typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
         }
       });
       sbSubscription = data?.subscription;
