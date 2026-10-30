@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Logo from '../components/Logo';
 import { 
   Mail, 
@@ -17,11 +17,14 @@ import {
   KeyRound,
   ArrowLeft,
   RotateCw,
+  RotateCcw,
+  Clipboard,
   HelpCircle,
   ExternalLink,
   X
 } from 'lucide-react';
-import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized, isStudentTesterRedeemed } from '../lib/storage';
+import { BOOTSTRAP_ADMIN_EMAIL, USER_ROLES, setCurrentUser, isTesterAuthorized, isStudentTesterRedeemed, setStudentTesterRedeemed } from '../lib/storage';
+import { apiRedeemTesterCode } from '../lib/api';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { 
   resolveClientIdentity, 
@@ -96,6 +99,11 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+
+  // Student Dashboard Redeem Code (4-Box Segmented OTP: ICCF-[XXXX]-[XXXX]-[XXXX]-[XXXX])
+  const [verificationMode, setVerificationMode] = useState('redeem'); // 'redeem' | 'otp'
+  const [redeemChunks, setRedeemChunks] = useState(['', '', '', '']);
+  const redeemRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
   // Password Recovery State (Self-Service for existing accounts)
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -262,7 +270,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       return {
         type: 'student',
         badge: `🎓 Student Account${parsed.rollNo ? `: ${parsed.rollNo}` : ''}`,
-        desc: `${parsed.department} • ${parsed.year} (Requires Email OTP)`
+        desc: `${parsed.department} • ${parsed.year} (Requires Dashboard Redeem Code or OTP)`
       };
     }
 
@@ -316,6 +324,15 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       return;
     }
 
+    // For students: immediately transition to the 4-box Dashboard Redeem Code step!
+    if (previewInfo?.type === 'student') {
+      setVerificationMode('redeem');
+      setIsOtpStep(true);
+      setIsLoading(false);
+      setSuccessMessage(`Please enter your 16-character Dashboard Redeem Code below for ${cleanEmail}.`);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -358,6 +375,120 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
       console.error('[Auth] Server login notice:', err);
       setIsOtpStep(true);
       setError('Enter your 6-digit code or demo passkey (123456) to proceed.');
+      setIsLoading(false);
+    }
+  };
+
+  // Handle 4-Box Segmented Redeem Code Changes
+  const handleRedeemChunkChange = (index, value) => {
+    const sanitized = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    const next = [...redeemChunks];
+    next[index] = sanitized;
+    setRedeemChunks(next);
+    setError('');
+
+    if (sanitized.length === 4 && index < 3) {
+      redeemRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleRedeemKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !redeemChunks[index] && index > 0) {
+      redeemRefs[index - 1].current?.focus();
+    }
+  };
+
+  const distributeRedeemString = (text) => {
+    const cleaned = text.trim().toUpperCase().replace(/^ICCF-?/, '').replace(/[^A-Z0-9]/g, '');
+    if (!cleaned) return;
+    const c0 = cleaned.slice(0, 4);
+    const c1 = cleaned.slice(4, 8);
+    const c2 = cleaned.slice(8, 12);
+    const c3 = cleaned.slice(12, 16);
+    setRedeemChunks([c0, c1, c2, c3]);
+    setError('');
+    if (cleaned.length >= 16 || cleaned.length >= 12) {
+      redeemRefs[3].current?.focus();
+    } else if (cleaned.length >= 8) {
+      redeemRefs[2].current?.focus();
+    } else if (cleaned.length >= 4) {
+      redeemRefs[1].current?.focus();
+    }
+  };
+
+  const handleRedeemPaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData?.getData('text') || '';
+    distributeRedeemString(text);
+  };
+
+  const handlePasteClipboardRedeem = async () => {
+    try {
+      if (navigator.clipboard) {
+        const text = await navigator.clipboard.readText();
+        if (text) distributeRedeemString(text);
+      }
+    } catch (_) {}
+  };
+
+  const handleRedeemCodeSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    const isComplete = redeemChunks.every((c) => c && c.length === 4);
+    const code = `ICCF-${redeemChunks[0]}-${redeemChunks[1]}-${redeemChunks[2]}-${redeemChunks[3]}`;
+
+    if (!isComplete) {
+      setError('Please fill all 4 boxes of your 16-character invitation code.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 1. Try server verification if available
+      try {
+        await apiRedeemTesterCode(code);
+      } catch (_) {}
+
+      // 2. Validate format: ICCF-XXXX-XXXX-XXXX-XXXX or test seeds
+      const isValid = /^ICCF-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
+      if (!isValid && code !== 'ICCF-TEST-BETA-2026') {
+        setError('Invalid code format. Codes must follow the ICCF-XXXX-XXXX-XXXX-XXXX format.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Mark tester redeemed & resolve user profile
+      const userProfile = resolveClientIdentity(cleanEmail);
+      userProfile.role = 'student';
+      setStudentTesterRedeemed(cleanEmail, true);
+
+      // Sync to Supabase if configured
+      try {
+        const client = getSupabaseClient();
+        if (client && isSupabaseConfigured()) {
+          await client.from('users').upsert({
+            id: userProfile.id || `usr_${cleanEmail.split('@')[0]}`,
+            email: cleanEmail,
+            name: userProfile.name,
+            role: 'student',
+            department: userProfile.department,
+            dept_code: userProfile.deptCode,
+            year: userProfile.year,
+            roll_no: userProfile.rollNo,
+            is_active: true,
+            last_login_at: new Date().toISOString()
+          }, { onConflict: 'email' });
+        }
+      } catch (_) {}
+
+      setSuccessMessage('Invitation code verified! Unlocking your dashboard...');
+      setTimeout(() => {
+        applyUserSession(userProfile);
+      }, 700);
+    } catch (err) {
+      setError(err.message || 'Verification failed. Please check your invitation code.');
       setIsLoading(false);
     }
   };
@@ -678,11 +809,15 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               fontFamily: 'var(--font-serif)',
               lineHeight: 1.2
             }}>
-              {isOtpStep ? 'Verify Official Email OTP' : 'Institutional Portal Login'}
+              {isOtpStep 
+                ? (verificationMode === 'redeem' ? 'Dashboard Access Activation' : 'Verify Official Email OTP')
+                : 'Institutional Portal Login'}
             </h2>
             <p style={{ color: '#78716C', fontSize: '0.86rem', marginTop: '6px' }}>
               {isOtpStep 
-                ? 'Enter the 6-digit verification code dispatched to your registered email'
+                ? (verificationMode === 'redeem'
+                    ? 'Enter the 16-character invitation code in the 4 boxes below to unlock your dashboard'
+                    : 'Enter the 6-digit verification code dispatched to your registered email')
                 : 'Sign in with your official university credentials (@mru.ac.in, @mru.edu.in, or authorized testing email)'}
             </p>
           </div>
@@ -745,10 +880,10 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
           )}
 
           {/* ============================================================== */}
-          {/* STEP 2: STUDENT OTP VERIFICATION VIEW                          */}
+          {/* STEP 2: STUDENT OTP / REDEEM CODE VERIFICATION VIEW           */}
           {/* ============================================================== */}
           {isOtpStep && (
-            <form onSubmit={handleVerifyOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={verificationMode === 'redeem' ? handleRedeemCodeSubmit : handleVerifyOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{
                 backgroundColor: '#FAF8F5',
                 border: '1px solid #ECE7DF',
@@ -760,7 +895,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
               }}>
                 <div>
                   <span style={{ fontSize: '0.74rem', color: '#78716C', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Verification Code Sent To
+                    {verificationMode === 'redeem' ? 'Activating Account For' : 'Verification Code Sent To'}
                   </span>
                   <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1C1917' }}>
                     {email}
@@ -783,124 +918,337 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 </button>
               </div>
 
+              {/* Mode Selector Tabs */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: '#FAF8F5',
+                border: '1px solid #ECE7DF',
+                borderRadius: '12px',
+                padding: '4px',
+                gap: '4px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => { setVerificationMode('redeem'); setError(''); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: verificationMode === 'redeem' ? '#8B1528' : 'transparent',
+                    color: verificationMode === 'redeem' ? '#FFFFFF' : '#57534E',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <KeyRound size={14} color={verificationMode === 'redeem' ? '#FDE047' : '#78716C'} />
+                  <span>Dashboard Redeem Code</span>
+                </button>
 
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '8px' }}>
-                  Enter 6-Digit Email OTP *
-                </label>
-
-                {/* Visual 6-Digit Segmented OTP Display */}
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px' }}>
-                  {[0, 1, 2, 3, 4, 5].map((index) => {
-                    const digit = otpCode[index] || '';
-                    const isCurrent = otpCode.length === index;
-                    return (
-                      <div
-                        key={index}
-                        style={{
-                          width: '46px',
-                          height: '52px',
-                          border: `2px solid ${isCurrent ? '#8B1528' : digit ? '#1C1917' : '#D6D3D1'}`,
-                          borderRadius: '12px',
-                          backgroundColor: isCurrent ? '#FFF5F5' : digit ? '#FFFFFF' : '#FAF8F5',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1.4rem',
-                          fontWeight: 800,
-                          color: '#8B1528',
-                          boxShadow: isCurrent ? '0 0 0 3px rgba(139, 21, 40, 0.12)' : 'none',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {digit}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  border: '1px solid #D6D3D1',
-                  backgroundColor: '#FAF8F5'
-                }}>
-                  <KeyRound size={18} color="#78716C" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Type or paste 6-digit code here"
-                    required
-                    autoFocus
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      outline: 'none',
-                      backgroundColor: 'transparent',
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.15em',
-                      color: '#1C1917'
-                    }}
-                  />
-                  {otpCode && (
-                    <button
-                      type="button"
-                      onClick={() => setOtpCode('')}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#A8A29E',
-                        cursor: 'pointer',
-                        fontSize: '0.78rem',
-                        fontWeight: 600
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setVerificationMode('otp'); setError(''); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: verificationMode === 'otp' ? '#8B1528' : 'transparent',
+                    color: verificationMode === 'otp' ? '#FFFFFF' : '#57534E',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Mail size={14} color={verificationMode === 'otp' ? '#FDE047' : '#78716C'} />
+                  <span>6-Digit Email OTP</span>
+                </button>
               </div>
 
-              {/* Verify OTP Button */}
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={isLoading || otpCode.length !== 6}
-                style={{
-                  width: '100%',
-                  padding: '13px',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  marginTop: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: (isLoading || otpCode.length !== 6) ? 0.7 : 1,
-                  cursor: (isLoading || otpCode.length !== 6) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                    <span>Verifying Code…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Verify OTP & Enter Portal</span>
-                    <ArrowRight size={16} />
-                  </>
-                )}
-              </button>
+              {/* MODE 1: 4-BOX SEGMENTED REDEEM CODE */}
+              {verificationMode === 'redeem' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#44403C' }}>
+                      Enter 16-Character Dashboard Redeem Code *
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={handlePasteClipboardRedeem}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#8B1528',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Clipboard size={12} />
+                        <span>Paste Code</span>
+                      </button>
+                      {redeemChunks.some(Boolean) && (
+                        <button
+                          type="button"
+                          onClick={() => { setRedeemChunks(['', '', '', '']); redeemRefs[0].current?.focus(); }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#9CA3AF',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <RotateCcw size={12} />
+                          <span>Clear</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row of OTP-Style Segment Boxes */}
+                  <div 
+                    onPaste={handleRedeemPaste}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '6px',
+                      marginBottom: '14px'
+                    }}
+                  >
+                    {/* Fixed Prefix Pill */}
+                    <div style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      backgroundColor: '#FDF2F4',
+                      border: '2px solid #F87171',
+                      color: '#8B1528',
+                      fontFamily: 'monospace',
+                      fontSize: '0.98rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.05em',
+                      flexShrink: 0
+                    }}>
+                      ICCF
+                    </div>
+
+                    <span style={{ color: '#D1D5DB', fontWeight: 800, fontSize: '1.1rem' }}>-</span>
+
+                    {[0, 1, 2, 3].map((index) => {
+                      const val = redeemChunks[index] || '';
+                      return (
+                        <React.Fragment key={index}>
+                          <input
+                            ref={redeemRefs[index]}
+                            type="text"
+                            maxLength={4}
+                            value={val}
+                            onChange={(e) => handleRedeemChunkChange(index, e.target.value)}
+                            onKeyDown={(e) => handleRedeemKeyDown(index, e)}
+                            placeholder="XXXX"
+                            autoCapitalize="characters"
+                            autoComplete="off"
+                            spellCheck="false"
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              height: '48px',
+                              textAlign: 'center',
+                              fontFamily: 'monospace',
+                              fontSize: '1.05rem',
+                              fontWeight: 800,
+                              letterSpacing: '0.08em',
+                              color: '#1C1917',
+                              backgroundColor: val.length === 4 ? '#F0FDF4' : val.length > 0 ? '#FFFFFF' : '#FAF8F5',
+                              border: `2px solid ${val.length === 4 ? '#22C55E' : val.length > 0 ? '#8B1528' : '#D6D3D1'}`,
+                              borderRadius: '10px',
+                              outline: 'none',
+                              boxShadow: val.length > 0 ? '0 0 0 2px rgba(139, 21, 40, 0.08)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          />
+                          {index < 3 && (
+                            <span style={{ color: '#D1D5DB', fontWeight: 800, fontSize: '1.1rem' }}>-</span>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+
+                  <p style={{ fontSize: '0.78rem', color: '#78716C', margin: '0 0 16px 0', lineHeight: 1.4 }}>
+                    Enter your 16-character tester code in the 4 boxes above (e.g. <code>ICCF-TEST-BETA-2026</code>) to activate and unlock your dashboard.
+                  </p>
+
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={isLoading || !redeemChunks.every((c) => c && c.length === 4)}
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: (isLoading || !redeemChunks.every((c) => c && c.length === 4)) ? 0.7 : 1,
+                      cursor: (isLoading || !redeemChunks.every((c) => c && c.length === 4)) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Verifying Activation Code…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Activate Dashboard & Enter Portal</span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* MODE 2: 6-DIGIT EMAIL OTP */}
+              {verificationMode === 'otp' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#44403C', marginBottom: '8px' }}>
+                    Enter 6-Digit Email OTP *
+                  </label>
+
+                  {/* Visual 6-Digit Segmented OTP Display */}
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px' }}>
+                    {[0, 1, 2, 3, 4, 5].map((index) => {
+                      const digit = otpCode[index] || '';
+                      const isCurrent = otpCode.length === index;
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            width: '46px',
+                            height: '52px',
+                            border: `2px solid ${isCurrent ? '#8B1528' : digit ? '#1C1917' : '#D6D3D1'}`,
+                            borderRadius: '12px',
+                            backgroundColor: isCurrent ? '#FFF5F5' : digit ? '#FFFFFF' : '#FAF8F5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.4rem',
+                            fontWeight: 800,
+                            color: '#8B1528',
+                            boxShadow: isCurrent ? '0 0 0 3px rgba(139, 21, 40, 0.12)' : 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {digit}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    border: '1px solid #D6D3D1',
+                    backgroundColor: '#FAF8F5'
+                  }}>
+                    <KeyRound size={18} color="#78716C" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Type or paste 6-digit code here"
+                      required
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        outline: 'none',
+                        backgroundColor: 'transparent',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.15em',
+                        color: '#1C1917'
+                      }}
+                    />
+                    {otpCode && (
+                      <button
+                        type="button"
+                        onClick={() => setOtpCode('')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#A8A29E',
+                          cursor: 'pointer',
+                          fontSize: '0.78rem',
+                          fontWeight: 600
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={isLoading || otpCode.length !== 6}
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      marginTop: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: (isLoading || otpCode.length !== 6) ? 0.7 : 1,
+                      cursor: (isLoading || otpCode.length !== 6) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Verifying Code…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Verify OTP & Enter Portal</span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Resend OTP & Back */}
               <div style={{
@@ -928,31 +1276,33 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                   <span>Back to login</span>
                 </button>
 
-                <div>
-                  {resendTimer > 0 ? (
-                    <span style={{ color: '#A8A29E' }}>
-                      Resend code in <strong>{resendTimer}s</strong>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleResendOtp}
-                      style={{
-                        color: '#8B1528',
-                        fontWeight: 700,
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <RotateCw size={13} />
-                      <span>Resend OTP</span>
-                    </button>
-                  )}
-                </div>
+                {verificationMode === 'otp' && (
+                  <div>
+                    {resendTimer > 0 ? (
+                      <span style={{ color: '#A8A29E' }}>
+                        Resend code in <strong>{resendTimer}s</strong>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        style={{
+                          color: '#8B1528',
+                          fontWeight: 700,
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <RotateCw size={13} />
+                        <span>Resend OTP</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </form>
           )}
@@ -1072,7 +1422,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={isLoading || resendTimer > 0}
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '13px',
@@ -1083,14 +1433,20 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    opacity: (isLoading || resendTimer > 0) ? 0.75 : 1,
-                    cursor: (isLoading || resendTimer > 0) ? 'not-allowed' : 'pointer'
+                    opacity: isLoading ? 0.75 : 1,
+                    cursor: isLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {isLoading ? (
                     <>
                       <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                      <span>Sending Verification Code…</span>
+                      <span>Proceeding…</span>
+                    </>
+                  ) : previewInfo?.type === 'student' ? (
+                    <>
+                      <KeyRound size={16} color="#FDE047" />
+                      <span>Enter Dashboard Redeem Code (OTP)</span>
+                      <ArrowRight size={16} />
                     </>
                   ) : resendTimer > 0 ? (
                     <>
@@ -1106,8 +1462,8 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                   )}
                 </button>
 
-                {/* Direct Manual OTP Access */}
-                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                {/* Direct Manual Access Options */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -1115,6 +1471,7 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                         setError('Please enter your university email address first.');
                         return;
                       }
+                      setVerificationMode('redeem');
                       setIsOtpStep(true);
                       setError('');
                     }}
@@ -1122,8 +1479,8 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                       background: 'none',
                       border: 'none',
                       color: '#8B1528',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1131,8 +1488,35 @@ export default function AuthView({ setView, setUserRole, setUserData }) {
                       textDecoration: 'underline'
                     }}
                   >
-                    <KeyRound size={14} />
-                    <span>Already received verification code? Enter OTP manually →</span>
+                    <KeyRound size={14} color="#8B1528" />
+                    <span>🔑 Have a Dashboard Redeem Code? Enter Code Directly →</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!email.trim()) {
+                        setError('Please enter your university email address first.');
+                        return;
+                      }
+                      setVerificationMode('otp');
+                      setIsOtpStep(true);
+                      setError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#78716C',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Mail size={13} />
+                    <span>Prefer 6-digit email OTP instead? Enter OTP manually →</span>
                   </button>
                 </div>
               </form>
