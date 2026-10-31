@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: mruiccf-portal
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: npm --prefix ICCF_Backend install && npm --prefix ICCF_Backend run build
+    startCommand: npm --prefix ICCF_Backend start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://jmzwuciamqedlskleitr.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_c3Q0NhLc1AfTXfTIShspxQ_rtW0m7KH
+      - key: CORS_ORIGIN
+        value: https://mruiccf-portal.vercel.app,http://localhost:3000
+      - key: JWT_SECRET
+        value: mr_iccf_enterprise_jwt_secret_key_2026_secure

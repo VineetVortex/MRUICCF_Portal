@@ -26,12 +26,13 @@ apiRouter.use('/ai', aiRoutes);
 apiRouter.use('/faculty', facultyRoutes);
 apiRouter.use('/feedback', feedbackRoutes);
 apiRouter.use('/', testerAccessRoutes);
+apiRouter.use('/admin', testerAccessRoutes);
 
 // API Information Route
 apiRouter.get('/', (req, res) => {
   res.status(200).json({
     name: 'Manav Rachna ICCF Portal Enterprise API',
-    version: '1.0.0',
+    version: '1.0.1',
     status: 'online',
     timestamp: new Date().toISOString(),
     endpoints: [
@@ -43,7 +44,11 @@ apiRouter.get('/', (req, res) => {
       '/api/certificates',
       '/api/analytics',
       '/api/audit-logs',
-      '/api/ai'
+      '/api/ai',
+      '/api/faculty',
+      '/api/feedback',
+      '/api/admin/testers',
+      '/api/tester-access'
     ]
   });
 });

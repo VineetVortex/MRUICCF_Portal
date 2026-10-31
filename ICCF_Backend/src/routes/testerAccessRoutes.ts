@@ -23,9 +23,11 @@ router.post('/admin/testers/import', ...adminOnly, importTesterRoster);
 
 // Get authorized roster with invitation statuses
 router.get('/admin/testers', ...adminOnly, getTesterRoster);
+router.get('/testers', ...adminOnly, getTesterRoster);
 
 // Issue high-entropy one-time invitation code
 router.post('/admin/testers/:id/invitations', ...adminOnly, issueTesterInvitation);
+router.post('/testers/:id/invitations', ...adminOnly, issueTesterInvitation);
 
 // Revoke unused invitation
 router.post('/admin/invitations/:id/revoke', ...adminOnly, revokeTesterInvitation);
