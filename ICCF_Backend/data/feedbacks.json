@@ -1,0 +1,16 @@
+[
+  {
+    "id": "fb_1793270128370_t2k5y",
+    "userId": "anonymous",
+    "studentName": "Vineet Kumar",
+    "rollNo": "22CSE0002",
+    "email": "22cse0002@mru.ac.in",
+    "department": "Computer Science & Technology",
+    "rating": 5,
+    "examFeedback": "Strict exam mode works smoothly!",
+    "dashboardFeedback": "Radar chart visualizes 15 dimensions well.",
+    "generalFeedback": "Ready for university launch.",
+    "isBetaTest": true,
+    "createdAt": "2026-10-29T10:35:28.370Z"
+  }
+]

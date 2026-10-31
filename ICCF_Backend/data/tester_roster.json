@@ -1,0 +1,178 @@
+[
+  {
+    "id": "rost_1793272898660_a6tuc",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01008",
+    "email": "anupam_kumar24@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:21:38.660Z",
+    "updatedAt": "2026-10-29T11:22:34.229Z"
+  },
+  {
+    "id": "rost_1793272898660_a72c1",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01011",
+    "email": "ayush_kumar24@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:21:38.660Z",
+    "updatedAt": "2026-10-29T11:22:34.229Z"
+  },
+  {
+    "id": "rost_1793273100701_3zva7",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01100",
+    "email": "tester_anupam_100682@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:25:00.701Z",
+    "updatedAt": "2026-10-29T11:25:00.701Z"
+  },
+  {
+    "id": "rost_1793273100701_blhu6",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02100",
+    "email": "tester_ayush_100682@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:25:00.701Z",
+    "updatedAt": "2026-10-29T11:25:00.701Z"
+  },
+  {
+    "id": "rost_1793273159488_6lsla",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01159",
+    "email": "tester_anupam_159478@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:25:59.488Z",
+    "updatedAt": "2026-10-29T11:25:59.488Z"
+  },
+  {
+    "id": "rost_1793273159488_1ke3m",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02159",
+    "email": "tester_ayush_159478@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:25:59.488Z",
+    "updatedAt": "2026-10-29T11:25:59.488Z"
+  },
+  {
+    "id": "rost_1793273168160_pybr6",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01168",
+    "email": "tester_anupam_168153@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:08.160Z",
+    "updatedAt": "2026-10-29T11:26:08.160Z"
+  },
+  {
+    "id": "rost_1793273168160_9fbfy",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02168",
+    "email": "tester_ayush_168153@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:08.160Z",
+    "updatedAt": "2026-10-29T11:26:08.160Z"
+  },
+  {
+    "id": "rost_1793273192977_7u31u",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01192",
+    "email": "tester_anupam_192969@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:32.977Z",
+    "updatedAt": "2026-10-29T11:26:32.977Z"
+  },
+  {
+    "id": "rost_1793273192977_859hm",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02192",
+    "email": "tester_ayush_192969@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:32.977Z",
+    "updatedAt": "2026-10-29T11:26:32.977Z"
+  },
+  {
+    "id": "rost_1793273208646_gqr01",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01208",
+    "email": "tester_anupam_208639@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:48.646Z",
+    "updatedAt": "2026-10-29T11:26:48.646Z"
+  },
+  {
+    "id": "rost_1793273208646_55oj4",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02208",
+    "email": "tester_ayush_208639@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:26:48.646Z",
+    "updatedAt": "2026-10-29T11:26:48.646Z"
+  },
+  {
+    "id": "rost_1793273699046_eey2k",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01699",
+    "email": "tester_anupam_699039@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:34:59.046Z",
+    "updatedAt": "2026-10-29T11:34:59.046Z"
+  },
+  {
+    "id": "rost_1793273699046_r3nro",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02699",
+    "email": "tester_ayush_699039@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T11:34:59.046Z",
+    "updatedAt": "2026-10-29T11:34:59.046Z"
+  },
+  {
+    "id": "rost_1793276774503_3mf9x",
+    "fullName": "Anupam Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN01774",
+    "email": "tester_anupam_774496@mru.ac.in",
+    "teamId": "TEAM-ALPHA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T12:26:14.503Z",
+    "updatedAt": "2026-10-29T12:26:14.503Z"
+  },
+  {
+    "id": "rost_1793276774504_0blqj",
+    "fullName": "Ayush Kumar",
+    "department": "B.Tech CSE Core",
+    "rollNumber": "2K24CSUN02774",
+    "email": "tester_ayush_774496@mru.ac.in",
+    "teamId": "TEAM-BETA",
+    "isAuthorized": true,
+    "createdAt": "2026-10-29T12:26:14.503Z",
+    "updatedAt": "2026-10-29T12:26:14.503Z"
+  }
+]

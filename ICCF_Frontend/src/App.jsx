@@ -26,7 +26,7 @@ import {
   setStudentTesterRedeemed
 } from './lib/storage';
 import RedeemView from './views/RedeemView';
-import { initAuthSession, apiLogoutUser, clearAuthSession, subscribeAuth } from './lib/authClient';
+import { initAuthSession, apiLoginUser, apiLogoutUser, clearAuthSession, subscribeAuth, getInMemoryAccessToken } from './lib/authClient';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
 import { resolveClientIdentity } from './lib/authResolver';
 
