@@ -275,10 +275,10 @@ export async function sendOtpEmail({ toEmail, studentName = 'Student', otp, requ
 
   // ─── FALLBACK: Nodemailer SMTP ────────────────────────────────────────────
   const validation = validateSmtpConfig();
-  if (validation.isValid) {
+  if (mockTransporter || validation.isValid) {
     try {
       const transporter = getSmtpTransporter();
-      const senderAddress = `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`;
+      const senderAddress = `"${config.smtp.fromName}" <${config.smtp.fromEmail || 'no-reply@mru.edu.in'}>`;
 
       const info = await transporter.sendMail({
         from: senderAddress,
@@ -379,6 +379,7 @@ export async function sendInviteEmail({
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey && resendApiKey.trim().startsWith('re_')) {
     try {
+      // @ts-ignore - Optional dependency dynamically resolved at runtime if installed
       const { Resend } = await import('resend');
       const resend = new Resend(resendApiKey.trim());
       const { data, error } = await resend.emails.send({
